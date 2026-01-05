@@ -1,4 +1,4 @@
-import { Client, Message } from 'discord.js';
+import { Client, Message, type MessageCreateOptions } from 'discord.js';
 
 import { PrettyText } from '../lib/pretty-text';
 import { MemosStore } from '../stores/memos.store';
@@ -17,6 +17,13 @@ const HELP = {
     ['!memo.help', '`!memo` コマンドのヘルプを表示します(エイリアス: `!memo`)'],
   ]
 } as const;
+
+type SendableChannel = Message['channel'] & { send: (content: string | MessageCreateOptions) => Promise<unknown> };
+
+const sendToChannel = (channel: Message['channel'], content: string | MessageCreateOptions) => {
+  if (!('send' in channel)) { return; }
+  return (channel as SendableChannel).send(content);
+};
 
 /** `MemoStore`の値を操作するサービスクラス。 */
 export class MemoService {
@@ -42,7 +49,7 @@ export class MemoService {
   /** keyにマッチする値を取得する。 */
   private async get({ channel, content }: Message) {
     const key = trimCommandsForConent(content);
-    channel.send((await this.memosStore.get(key)).pretty);
+    sendToChannel(channel, (await this.memosStore.get(key)).pretty);
   }
 
   /**
@@ -53,28 +60,28 @@ export class MemoService {
     const body  = trimCommandsForConent(content);
     const key   = body.replace(/\s.*/g, '');
     const value = body.replace(key, '').trim();
-    channel.send((await this.memosStore.set(key, value)).pretty);
+    sendToChannel(channel, (await this.memosStore.set(key, value)).pretty);
   }
 
   /** bodyにマッチする値を削除する。 */
   private async remove({ channel, content }: Message) {
     const body  = trimCommandsForConent(content);
-    channel.send((await this.memosStore.del(body)).pretty);
+    sendToChannel(channel, (await this.memosStore.del(body)).pretty);
   }
 
   /** memoの値を一覧する。 */
   private async list({ channel }: Message) {
     const pretty = (await this.memosStore.data()).pretty;
     if (pretty.length < 2000) {
-      channel.send(pretty);
+      sendToChannel(channel, pretty);
     } else {
-      channel.send({ content: '**MEMO 一覧**', files: [{ name: 'MEMO.md', attachment: Buffer.from(pretty) }] });
+      sendToChannel(channel, { content: '**MEMO 一覧**', files: [{ name: 'MEMO.md', attachment: Buffer.from(pretty) }] });
     }
   }
 
   /** ヘルプを表示する。 */
   private help({ channel }: Message) {
     const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    channel.send(text);
+    sendToChannel(channel, text);
   }
 }

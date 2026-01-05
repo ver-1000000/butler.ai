@@ -1,4 +1,4 @@
-import { MessageReaction, Client, Message, User, VoiceChannel, VoiceState, TextChannel } from 'discord.js';
+import { ActivityType, MessageReaction, Client, Message, User, VoiceChannel, VoiceState, TextChannel, type MessageCreateOptions } from 'discord.js';
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, DiscordGatewayAdapterCreator, joinVoiceChannel } from '@discordjs/voice';
 import { schedule } from 'node-cron';
 
@@ -41,7 +41,7 @@ export class PomodoroService {
 
   /** Clientからのイベント監視を開始する。 */
   run() {
-    this.client.on('ready', async () => {
+    this.client.on('clientReady', async () => {
       await this.setMute(false);
       this.restart();
     });
@@ -88,8 +88,8 @@ export class PomodoroService {
     this.status.startAt = ((d: Date) => { d.setSeconds(0); return d })(new Date());
     this.status.task  = schedule('* * * * *', () => this.onSchedule());
     this.doWork();
-    channel.send(`ポモドーロを開始します:timer: **:loudspeaker:${this.voiceChannel?.name}** に参加して、作業を始めてください:fire:`);
-    this.client.user?.setPresence({ activities: [{ name: 'ポモドーロ', type: 'PLAYING' }] });
+    this.sendMessage(channel, `ポモドーロを開始します:timer: **:loudspeaker:${this.voiceChannel?.name}** に参加して、作業を始めてください:fire:`);
+    this.client.user?.setPresence({ activities: [{ name: 'ポモドーロ', type: ActivityType.Playing }] });
   }
 
   /** PomodoroService起動時に`this.status.startAt`が設定されている時、中断からの復帰を行う。 */
@@ -102,15 +102,15 @@ export class PomodoroService {
       `:warning: なにか問題があり停止してしまったため、ポモドーロを再開しました。\n` +
         `現在、_** ${this.status.wave} 回目 ${this.status.spent} 分経過、${this.status.rest ? '休憩' : '作業'}中**_です。`
     );
-    this.client.user?.setPresence({ activities: [{ name: '🍅ポモドーロ', type: 'PLAYING' }] });
+    this.client.user?.setPresence({ activities: [{ name: '🍅ポモドーロ', type: ActivityType.Playing }] });
   }
 
   /** ポモドーロタイマーを終了/停止させて発言通知する。 */
   private async stop({ channel }: Message) {
     this.status.reset();
     await this.setMute(false);
-    channel.send('ポモドーロを終了します:timer: お疲れ様でした:island:');
-    this.client.user?.setPresence({ activities: [{ name: 'みんなの発言', type: 'WATCHING' }] });
+    this.sendMessage(channel, 'ポモドーロを終了します:timer: お疲れ様でした:island:');
+    this.client.user?.setPresence({ activities: [{ name: 'みんなの発言', type: ActivityType.Watching }] });
   }
 
   /** ステータスをユーザーフレンドリーな文字列として整形した値をメッセージとして発言通知する。 */
@@ -121,13 +121,14 @@ export class PomodoroService {
     **ポモドーロタイマー: **_${this.status.wave} 回目 ${this.status.spent % POMODORO_DURATION} 分経過_
     **ポモドーロの状態: **_${this.status.startAt ? this.status.rest ? '休憩中:island:' : '作業中:fire:' : '停止中:sleeping:'}_
     `.replace(/\n\s*/g, '\n');
-    channel.send(text);
+    this.sendMessage(channel, text);
   }
 
   /** ヘルプを発言通知する。 */
   private async help({ channel }: Message) {
     const text    = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    const message = await channel.send(text);
+    const message = await this.sendMessage(channel, text);
+    if (!message) { return; }
     this.commandsEmoji(message);
   }
 
@@ -144,7 +145,7 @@ export class PomodoroService {
     const reaction = (await message.awaitReactions({ filter, max: 1, time }))?.first();
     await message.reactions.removeAll();
     await message.edit(message.content.replace(additional, ''));
-    if (reaction?.emoji?.name) { await message.channel.send(`---\n${reaction.emoji.name}を選択しました。\n---`) }
+    if (reaction?.emoji?.name) { await this.sendMessage(message.channel, `---\n${reaction.emoji.name}を選択しました。\n---`) }
     if (reaction?.emoji?.name === EMOJIS.ONE) { this.start(message); }
     if (reaction?.emoji?.name === EMOJIS.TWO) { this.stop(message); }
     if (reaction?.emoji?.name === EMOJIS.THREE) { this.sendPrettyStatus(message); }
@@ -190,5 +191,11 @@ export class PomodoroService {
    */
   private setMute(mute: boolean) {
     return Promise.all(this.voiceChannel?.members.map(member => member.voice.channel ? member.voice.setMute(mute) : member) || []);
+  }
+
+  private sendMessage(channel: Message['channel'], content: string | MessageCreateOptions) {
+    type SendableChannel = Message['channel'] & { send: (content: string | MessageCreateOptions) => Promise<Message> };
+    if (!('send' in channel)) { return null; }
+    return (channel as SendableChannel).send(content);
   }
 }

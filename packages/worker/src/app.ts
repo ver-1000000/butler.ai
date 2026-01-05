@@ -1,4 +1,4 @@
-import { Client, ClientUser, Intents, TextChannel } from 'discord.js';
+import { ActivityType, Client, ClientUser, GatewayIntentBits, Partials, TextChannel } from 'discord.js';
 import type { RequestInfo, RequestInit, Response } from 'node-fetch';
 
 import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from '@butler/core';
@@ -20,7 +20,7 @@ class App {
   run() {
     this.confirmToken();
     this.wakeUpHost();
-    this.client.on('ready', () => this.initializeBotStatus(this.client.user));
+    this.client.on('clientReady', () => this.initializeBotStatus(this.client.user));
     this.client.on('error', e => this.error(e));
     this.client.login(DISCORD_TOKEN);
   }
@@ -46,7 +46,10 @@ class App {
   /** readyイベントにフックして、ボットのステータスなどを設定する。 */
   private initializeBotStatus(user: ClientUser | null) {
     console.log(`ready - started worker server`);
-    user?.setPresence({ activities: [{ name: 'みんなの発言', type: 'WATCHING' }] });
+    if (user) {
+      console.log(`logged in as ${user.tag} (${user.id})`);
+    }
+    user?.setPresence({ activities: [{ name: 'みんなの発言', type: ActivityType.Watching }] });
   }
 
   /** Discord.jsからエラーイベントを受け取った時、Discordに通知する。 */
@@ -64,12 +67,13 @@ class App {
 /** 依存を解決しつつアプリケーションを起動する。 */
 (() => {
   const intents = [
-    Intents.FLAGS.GUILDS,
-    Intents.FLAGS.GUILD_MESSAGES,
-    Intents.FLAGS.GUILD_VOICE_STATES,
-    Intents.FLAGS.GUILD_MESSAGE_REACTIONS
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent
   ];
-  const client      = new Client({ intents });
+  const client      = new Client({ intents, partials: [Partials.Message, Partials.Channel, Partials.Reaction] });
   const memosStore  = new MemosStore();
   const entityStore = new StickersStore();
   new NotifyVoiceChannelService(client).run();

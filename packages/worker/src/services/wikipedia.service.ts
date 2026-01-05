@@ -1,6 +1,6 @@
 import type { RequestInfo, RequestInit, Response } from 'node-fetch';
 
-import { Client, Message } from 'discord.js';
+import { Client, Message, type MessageCreateOptions } from 'discord.js';
 import { PrettyText } from '../lib/pretty-text';
 
 
@@ -66,15 +66,21 @@ export class WikipediaService {
       const success = () => PrettyText.markdownList(`<${HOST}?curid=${pages[0].pageid}> \`[${word}]\``, ...items);
       const fail    = () => `\`${word}\` はWikipediaで検索できませんでした:smiling_face_with_tear:`;
       const text    = items.length ? success() : fail();
-      channel.send(text);
+      this.sendToChannel(channel, text);
     } catch (e) {
-      channel.send('検索に失敗しました:smiling_face_with_tear: Wikipediaのサーバーに何かあったかもしれません:pleading_face:');
+      this.sendToChannel(channel, '検索に失敗しました:smiling_face_with_tear: Wikipediaのサーバーに何かあったかもしれません:pleading_face:');
     }
   }
 
   /** ヘルプを表示する。 */
   private help({ channel }: Message) {
     const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    channel.send(text);
+    this.sendToChannel(channel, text);
+  }
+
+  private sendToChannel(channel: Message['channel'], content: string | MessageCreateOptions) {
+    type SendableChannel = Message['channel'] & { send: (content: string | MessageCreateOptions) => Promise<unknown> };
+    if (!('send' in channel)) { return; }
+    return (channel as SendableChannel).send(content);
   }
 }
