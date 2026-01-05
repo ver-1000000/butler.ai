@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import type { RequestInfo, RequestInit, Response } from 'node-fetch';
 
 import { Client, Message } from 'discord.js';
 import { PrettyText } from '../lib/pretty-text';
@@ -54,6 +54,9 @@ export class WikipediaService {
   /** wikiからコンテンツのサマリーを取得する。 */
   private async summary({ channel, content }: Message) {
     try {
+      type FetchFn = (url: RequestInfo, init?: RequestInit) => Promise<Response>;
+      const fetch: FetchFn = (url, init) =>
+        import('node-fetch').then(({ default: fetch }) => fetch(url, init));
       const HOST    = 'https://ja.wikipedia.org/';
       const QUERY   = 'w/api.php?format=json&action=query&prop=extracts&exintro&explaintext&redirects=1&titles=';
       const word    = trimCommandsForConent(content);

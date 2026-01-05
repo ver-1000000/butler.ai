@@ -1,5 +1,5 @@
 import { Client, ClientUser, Intents, TextChannel } from 'discord.js';
-import fetch from 'node-fetch';
+import type { RequestInfo, RequestInit, Response } from 'node-fetch';
 
 import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from '@butler/core';
 import { MemosStore } from './stores/memos.store';
@@ -34,6 +34,9 @@ class App {
 
   /** WAKEUP_URLが環境変数で設定されている場合、定期的にGETリクエストを送ることでホストのsleepを防ぐ。 */
   private wakeUpHost() {
+    type FetchFn = (url: RequestInfo, init?: RequestInit) => Promise<Response>;
+    const fetch: FetchFn = (url, init) =>
+      import('node-fetch').then(({ default: fetch }) => fetch(url, init));
     const url = process.env.WAKEUP_URL || '';
     if (url === '') { return; }
     const interval = 10 * Number(process.env.WAKEUP_INTERVAL || '60') * 1000; // default: 10min

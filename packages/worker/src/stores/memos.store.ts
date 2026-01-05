@@ -18,9 +18,14 @@ const HKEY = 'MEMO';
 
 /** memoの情報をjsonに永続化して保存するためのストア用クラス。 */
 export class MemosStore {
-  private redis = new Redis(REDIS_URL);
+  private redis: Redis;
 
-  constructor() {}
+  constructor() {
+    if (!REDIS_URL) {
+      throw new Error('REDIS_URLが設定されていません。');
+    }
+    this.redis = new Redis(REDIS_URL);
+  }
 
   /** 設定されている値をすべて取得する。 */
   async data(): Promise<Omit<StoreResult<Record<string, string>>, 'key'>> {

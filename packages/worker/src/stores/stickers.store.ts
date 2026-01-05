@@ -24,9 +24,14 @@ const HKEY = 'STICKER';
 
 /** 画像と正規表現のレコードを表すクラス。 */
 export class StickersStore {
-  private redis = new Redis(REDIS_URL);
+  private redis: Redis;
 
-  constructor() {}
+  constructor() {
+    if (!REDIS_URL) {
+      throw new Error('REDIS_URLが設定されていません。');
+    }
+    this.redis = new Redis(REDIS_URL);
+  }
 
   /** 設定されている値をすべて取得する。 */
   async data(): Promise<StoreResult<Record<string, Sticker>>> {

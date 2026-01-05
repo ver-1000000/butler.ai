@@ -7,12 +7,16 @@ const HKEY = 'POMODORO';
 
 /** ポモドーロの現在の状態を表すモデル。 */
 export class PomodoroStatus {
-  private redis = new Redis(REDIS_URL);
+  private redis: Redis;
   private inmemory = { startAt: null as Date | null, spent: 0, wave: 0, rest: true };
   /** `node-cron`のスケジュール。 jsonに書き込まずオンメモリで管理するため、強制終了で揮発する。 */
   private scheduleTask: ScheduledTask | null = null;
 
   constructor() {
+    if (!REDIS_URL) {
+      throw new Error('REDIS_URLが設定されていません。');
+    }
+    this.redis = new Redis(REDIS_URL);
     this.restore();
   }
 
