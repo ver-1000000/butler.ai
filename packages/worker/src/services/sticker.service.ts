@@ -22,23 +22,23 @@ export class StickerService {
 
   /** Clientからのイベント監視を開始する。 */
   run() {
-    this.client.on('interactionCreate', interaction => {
+    this.client.on('interactionCreate', async interaction => {
       if (!interaction.isChatInputCommand()) { return; }
       if (interaction.commandName !== 'butler') { return; }
       if (interaction.options.getSubcommandGroup() !== 'sticker') { return; }
-      this.onCommand(interaction);
+      await this.onCommand(interaction);
     });
     this.client.on('messageCreate', message => this.onMessage(message));
     return this;
   }
 
   /** Slash Commandで関数を振り分けるファサード。 */
-  private onCommand(interaction: ChatInputCommandInteraction) {
+  private async onCommand(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
-    if (subcommand === 'set') { this.set(interaction); }
-    if (subcommand === 'remove') { this.remove(interaction); }
-    if (subcommand === 'list') { this.list(interaction); }
-    if (subcommand === 'help') { this.help(interaction); }
+    if (subcommand === 'set') { await this.set(interaction); }
+    if (subcommand === 'remove') { await this.remove(interaction); }
+    if (subcommand === 'list') { await this.list(interaction); }
+    if (subcommand === 'help') { await this.help(interaction); }
   }
 
   /** `message`で関数を振り分けるファサード。 */
