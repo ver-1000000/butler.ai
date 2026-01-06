@@ -3,6 +3,7 @@ import { Client, Message, type MessageCreateOptions } from 'discord.js';
 import { DETECT_STICKER_RATE } from '@butler/core';
 import { PrettyText } from '../lib/pretty-text';
 import { StickersStore } from '../stores/stickers.store';
+import { sendToChannel } from '../utils/discord.util';
 
 /** `GenerateText.help`に食わせるヘルプ文の定数。 */
 const HELP = {
@@ -41,29 +42,29 @@ export class StickerService {
   private async set({ channel }: Message, { body }: { body: string }) {
     const key   = body.replace(/\s.*/g, '');
     const value = body.replace(key, '').trim().replace(/^\/|\/$/g, '');
-    this.sendToChannel(channel, (await this.stickersStore.set(key, value)).pretty);
+    sendToChannel(channel, (await this.stickersStore.set(key, value)).pretty);
   }
 
   /** `!sticker.remove` コマンドを受け取った時、第一引数にマッチする値を削除する。 */
   private async remove({ channel }: Message, { body: url }: { body: string }) {
-    this.sendToChannel(channel, (await this.stickersStore.del(url)).pretty);
+    sendToChannel(channel, (await this.stickersStore.del(url)).pretty);
   }
 
   /** `!sticker.list` コマンドを受け取った時、値を一覧する。 */
   private async list({ channel }: Message) {
     const data = await this.stickersStore.data();
     if (data.pretty.length < 2000) {
-      this.sendToChannel(channel, data.pretty);
+      sendToChannel(channel, data.pretty);
     } else {
       const pretty = `[${Object.values(data.value).map(({ id, regexp }) => `\n  ["${id}", "${regexp}"]`).join(',')}\n]`;
-      this.sendToChannel(channel, { content: '**STICKER 一覧**', files: [{ name: 'STICKERS.md', attachment: Buffer.from(pretty) }] });
+      sendToChannel(channel, { content: '**STICKER 一覧**', files: [{ name: 'STICKERS.md', attachment: Buffer.from(pretty) }] });
     }
   }
 
   /** ヘルプを表示する。 */
   private help({ channel }: Message) {
     const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    this.sendToChannel(channel, text);
+    sendToChannel(channel, text);
   }
 
   /** チャットからStickerの正規表現を検知した場合、DETECT_STICKER_RATEに従ってStickerを送信する。 */
@@ -82,12 +83,6 @@ export class StickerService {
       return url ? `${url} ||/${regexp}/||` : null;
     }
     const text = await detectSticker({ mentions, content });
-    if (text) { this.sendToChannel(channel, text); }
-  }
-
-  private sendToChannel(channel: Message['channel'], content: string | MessageCreateOptions) {
-    type SendableChannel = Message['channel'] & { send: (content: string | MessageCreateOptions) => Promise<unknown> };
-    if (!('send' in channel)) { return; }
-    return (channel as SendableChannel).send(content);
+    if (text) { sendToChannel(channel, text); }
   }
 }

@@ -5,6 +5,7 @@ import { schedule } from 'node-cron';
 import { NOTIFY_TEXT_CHANNEL_ID, POMODORO_VOICE_CHANNEL_ID } from '@butler/core';
 import { PrettyText } from '../lib/pretty-text';
 import { PomodoroStatus } from '../models/pomodoro-status.model';
+import { sendToChannel } from '../utils/discord.util';
 
 /** デバッグモードフラグ。 */
 const DEBUG = false;
@@ -88,7 +89,7 @@ export class PomodoroService {
     this.status.startAt = ((d: Date) => { d.setSeconds(0); return d })(new Date());
     this.status.task  = schedule('* * * * *', () => this.onSchedule());
     this.doWork();
-    this.sendMessage(channel, `ポモドーロを開始します:timer: **:loudspeaker:${this.voiceChannel?.name}** に参加して、作業を始めてください:fire:`);
+    sendToChannel(channel, `ポモドーロを開始します:timer: **:loudspeaker:${this.voiceChannel?.name}** に参加して、作業を始めてください:fire:`);
     this.client.user?.setPresence({ activities: [{ name: 'ポモドーロ', type: ActivityType.Playing }] });
   }
 
@@ -109,7 +110,7 @@ export class PomodoroService {
   private async stop({ channel }: Message) {
     this.status.reset();
     await this.setMute(false);
-    this.sendMessage(channel, 'ポモドーロを終了します:timer: お疲れ様でした:island:');
+    sendToChannel(channel, 'ポモドーロを終了します:timer: お疲れ様でした:island:');
     this.client.user?.setPresence({ activities: [{ name: 'みんなの発言', type: ActivityType.Watching }] });
   }
 
@@ -121,13 +122,13 @@ export class PomodoroService {
     **ポモドーロタイマー: **_${this.status.wave} 回目 ${this.status.spent % POMODORO_DURATION} 分経過_
     **ポモドーロの状態: **_${this.status.startAt ? this.status.rest ? '休憩中:island:' : '作業中:fire:' : '停止中:sleeping:'}_
     `.replace(/\n\s*/g, '\n');
-    this.sendMessage(channel, text);
+    sendToChannel(channel, text);
   }
 
   /** ヘルプを発言通知する。 */
   private async help({ channel }: Message) {
     const text    = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    const message = await this.sendMessage(channel, text);
+    const message = await sendToChannel(channel, text);
     if (!message) { return; }
     this.commandsEmoji(message);
   }
@@ -145,7 +146,7 @@ export class PomodoroService {
     const reaction = (await message.awaitReactions({ filter, max: 1, time }))?.first();
     await message.reactions.removeAll();
     await message.edit(message.content.replace(additional, ''));
-    if (reaction?.emoji?.name) { await this.sendMessage(message.channel, `---\n${reaction.emoji.name}を選択しました。\n---`) }
+    if (reaction?.emoji?.name) { await sendToChannel(message.channel, `---\n${reaction.emoji.name}を選択しました。\n---`); }
     if (reaction?.emoji?.name === EMOJIS.ONE) { this.start(message); }
     if (reaction?.emoji?.name === EMOJIS.TWO) { this.stop(message); }
     if (reaction?.emoji?.name === EMOJIS.THREE) { this.sendPrettyStatus(message); }
@@ -191,11 +192,5 @@ export class PomodoroService {
    */
   private setMute(mute: boolean) {
     return Promise.all(this.voiceChannel?.members.map(member => member.voice.channel ? member.voice.setMute(mute) : member) || []);
-  }
-
-  private sendMessage(channel: Message['channel'], content: string | MessageCreateOptions) {
-    type SendableChannel = Message['channel'] & { send: (content: string | MessageCreateOptions) => Promise<Message> };
-    if (!('send' in channel)) { return null; }
-    return (channel as SendableChannel).send(content);
   }
 }

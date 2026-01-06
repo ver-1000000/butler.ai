@@ -28,7 +28,7 @@ export class StickersStore {
 
   constructor() {
     if (!REDIS_URL) {
-      throw new Error('REDIS_URLが設定されていません。');
+      throw new Error('REDIS_URLが設定されていません');
     }
     this.redis = new Redis(REDIS_URL);
   }
