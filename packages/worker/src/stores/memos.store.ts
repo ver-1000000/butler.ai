@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 
 import { REDIS_URL } from '@butler/core';
-import { PrettyText } from '../lib/pretty-text';
+import { PrettyText } from '../utils/pretty-text.util';
 
 /** `MemoStore`にアクセスした結果を使いやすくするためにラップする型。 */
 interface StoreResult<T = string | Record<string, string>> {
@@ -22,7 +22,7 @@ export class MemosStore {
 
   constructor() {
     if (!REDIS_URL) {
-      throw new Error('REDIS_URLが設定されていません。');
+      throw new Error('REDIS_URLが設定されていません');
     }
     this.redis = new Redis(REDIS_URL);
   }

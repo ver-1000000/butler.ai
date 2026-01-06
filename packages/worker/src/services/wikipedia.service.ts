@@ -1,7 +1,9 @@
 import type { RequestInfo, RequestInit, Response } from 'node-fetch';
 
 import { Client, Message, type MessageCreateOptions } from 'discord.js';
-import { PrettyText } from '../lib/pretty-text';
+import { PrettyText } from '../utils/pretty-text.util';
+import { sendToChannel } from '../utils/discord.util';
+import { dynamicFetch } from '../utils/fetch.util';
 
 
 /** メッセージ(`content`)からコマンドに該当する文字列を除外する。 */
@@ -54,33 +56,24 @@ export class WikipediaService {
   /** wikiからコンテンツのサマリーを取得する。 */
   private async summary({ channel, content }: Message) {
     try {
-      type FetchFn = (url: RequestInfo, init?: RequestInit) => Promise<Response>;
-      const fetch: FetchFn = (url, init) =>
-        import('node-fetch').then(({ default: fetch }) => fetch(url, init));
       const HOST    = 'https://ja.wikipedia.org/';
       const QUERY   = 'w/api.php?format=json&action=query&prop=extracts&exintro&explaintext&redirects=1&titles=';
       const word    = trimCommandsForConent(content);
-      const res     = await (await fetch(`${HOST}${QUERY}${encodeURIComponent(word)}`)).json() as WikipediaResponce;
+      const res     = await (await dynamicFetch(`${HOST}${QUERY}${encodeURIComponent(word)}`)).json() as WikipediaResponce;
       const pages   = Object.values(res.query.pages);
       const items   = pages.reduce((a: [string, string][], b) => b.extract ? [...a, [b.title, b.extract] as [string, string]] : a, []);
       const success = () => PrettyText.markdownList(`<${HOST}?curid=${pages[0].pageid}> \`[${word}]\``, ...items);
       const fail    = () => `\`${word}\` はWikipediaで検索できませんでした:smiling_face_with_tear:`;
       const text    = items.length ? success() : fail();
-      this.sendToChannel(channel, text);
+      sendToChannel(channel, text);
     } catch (e) {
-      this.sendToChannel(channel, '検索に失敗しました:smiling_face_with_tear: Wikipediaのサーバーに何かあったかもしれません:pleading_face:');
+      sendToChannel(channel, '検索に失敗しました:smiling_face_with_tear: Wikipediaのサーバーに何かあったかもしれません:pleading_face:');
     }
   }
 
   /** ヘルプを表示する。 */
   private help({ channel }: Message) {
     const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    this.sendToChannel(channel, text);
-  }
-
-  private sendToChannel(channel: Message['channel'], content: string | MessageCreateOptions) {
-    type SendableChannel = Message['channel'] & { send: (content: string | MessageCreateOptions) => Promise<unknown> };
-    if (!('send' in channel)) { return; }
-    return (channel as SendableChannel).send(content);
+    sendToChannel(channel, text);
   }
 }

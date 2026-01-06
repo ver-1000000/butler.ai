@@ -1,6 +1,6 @@
 import { Client, Message, type MessageCreateOptions } from 'discord.js';
 
-import { PrettyText } from '../lib/pretty-text';
+import { PrettyText } from '../utils/pretty-text.util';
 import { MemosStore } from '../stores/memos.store';
 
 /** メッセージ(`content`)からコマンドに該当する文字列を除外する。 */

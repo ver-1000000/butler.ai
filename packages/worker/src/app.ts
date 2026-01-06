@@ -11,6 +11,7 @@ import { PomodoroService } from './services/pomodoro.service';
 import { InteractiveService } from './services/interactive.service';
 import { WikipediaService } from './services/wikipedia.service';
 import { StickerService } from './services/sticker.service';
+import { dynamicFetch } from './utils/fetch.util';
 
 /** 起点となるメインのアプリケーションクラス。 */
 class App {
@@ -34,13 +35,10 @@ class App {
 
   /** WAKEUP_URLが環境変数で設定されている場合、定期的にGETリクエストを送ることでホストのsleepを防ぐ。 */
   private wakeUpHost() {
-    type FetchFn = (url: RequestInfo, init?: RequestInit) => Promise<Response>;
-    const fetch: FetchFn = (url, init) =>
-      import('node-fetch').then(({ default: fetch }) => fetch(url, init));
     const url = process.env.WAKEUP_URL || '';
     if (url === '') { return; }
     const interval = 10 * Number(process.env.WAKEUP_INTERVAL || '60') * 1000; // default: 10min
-    setInterval(() => fetch(url), interval);
+    setInterval(() => dynamicFetch(url), interval);
   }
 
   /** readyイベントにフックして、ボットのステータスなどを設定する。 */
