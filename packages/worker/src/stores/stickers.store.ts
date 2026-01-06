@@ -1,5 +1,4 @@
-import Redis from 'ioredis';
-import { REDIS_URL } from '@butler/core';
+import { getSqliteDb } from '@butler/core';
 import { PrettyText } from '../utils/pretty-text.util';
 
 /** ストアにアクセスした結果を使いやすくするためにラップする型。 */
@@ -19,47 +18,43 @@ export interface Sticker {
   regexp: string;
 }
 
-/** Redisで利用するトップキー。 */
-const HKEY = 'STICKER';
-
 /** 画像と正規表現のレコードを表すクラス。 */
 export class StickersStore {
-  private redis: Redis;
-
-  constructor() {
-    if (!REDIS_URL) {
-      throw new Error('REDIS_URLが設定されていません');
-    }
-    this.redis = new Redis(REDIS_URL);
-  }
+  private db = getSqliteDb();
+  private statementData = this.db.prepare('SELECT id, regexp FROM stickers ORDER BY id');
+  private statementGet = this.db.prepare('SELECT id, regexp FROM stickers WHERE id = ?');
+  private statementSet = this.db.prepare('INSERT INTO stickers (id, regexp) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET regexp = excluded.regexp');
+  private statementDel = this.db.prepare('DELETE FROM stickers WHERE id = ?');
 
   /** 設定されている値をすべて取得する。 */
-  async data(): Promise<StoreResult<Record<string, Sticker>>> {
-    const value  = Object.entries(await this.redis.hgetall(HKEY)).reduce<Record<string, Sticker>>((a, [k, v]) => ({ ...a, [k]: JSON.parse(v) }), {});
-    const items  = Object.entries(value).map<[string, string]>(([k, v]) => [k, v.regexp]);
+  data(): StoreResult<Record<string, Sticker>> {
+    const rows   = this.statementData.all() as Sticker[];
+    const value  = rows.reduce<Record<string, Sticker>>((a, row) => ({ ...a, [row.id]: row }), {});
+    const items  = rows.map<[string, string]>(({ id, regexp }) => [id, regexp]);
     const pretty = PrettyText.markdownList('', ...items) || 'Stickerは一つもありません:drum:';
     return { pretty, value };
   }
 
   /** データストアから値を取得する。 */
-  async get(key: string): Promise<StoreResult<Sticker | null>> {
-    const value: Sticker | null = JSON.parse((await this.redis.hget(HKEY, key)) ?? 'null');
-    const pretty                = value == null ? `**${key}** は設定されていません:cry:` : ` **\`${key}\`** \`/${value.regexp}/\``;
+  get(key: string): StoreResult<Sticker | null> {
+    const row    = this.statementGet.get(key) as Sticker | undefined;
+    const value  = row ?? null;
+    const pretty = value == null ? `**${key}** は設定されていません:cry:` : ` **\`${key}\`** \`/${value.regexp}/\``;
     return { pretty, key, value };
   }
 
   /** データストアに値を設定する。 */
-  async set(key: string, value: string): Promise<StoreResult<string>> {
-    await this.redis.hset(HKEY, key, JSON.stringify({ id: key, regexp: value }));
+  set(key: string, value: string): StoreResult<string> {
+    this.statementSet.run(key, value);
     const pretty = `**\`${key}\`** に **\`/${value}/\`** を設定しました:pleading_face:`;
     return { pretty, key, value };
   }
 
   /** データストアから値を削除する。 */
-  async del(key: string): Promise<StoreResult<Sticker | null>> {
-    const value  = (await this.get(key)).value;
+  del(key: string): StoreResult<Sticker | null> {
+    const value  = this.get(key).value;
     const pretty = value == null ? `**${key}** は設定されていません:cry:` : `**${key}** を削除しました:wave:${value ? '\n' + PrettyText.code(value.regexp) : ''}`;
-    if (value != null) { await this.redis.hdel(HKEY, key); }
+    if (value != null) { this.statementDel.run(key); }
     return { pretty, key, value };
   }
 }

@@ -1,29 +1,37 @@
-import Redis from 'ioredis';
 import { ScheduledTask } from 'node-cron';
-import { REDIS_URL } from '@butler/core';
-
-/** Redisで利用するトップキー。 */
-const HKEY = 'POMODORO';
+import { getSqliteDb } from '@butler/core';
 
 /** ポモドーロの現在の状態を表すモデル。 */
 export class PomodoroStatus {
-  private redis: Redis;
+  private db = getSqliteDb();
   private inmemory = { startAt: null as Date | null, spent: 0, wave: 0, rest: true };
+  private statementRestore = this.db.prepare('SELECT start_at, spent, wave, rest FROM pomodoro_status WHERE id = 1');
+  private statementSetStartAt = this.db.prepare('UPDATE pomodoro_status SET start_at = ? WHERE id = 1');
+  private statementSetSpent = this.db.prepare('UPDATE pomodoro_status SET spent = ? WHERE id = 1');
+  private statementSetWave = this.db.prepare('UPDATE pomodoro_status SET wave = ? WHERE id = 1');
+  private statementSetRest = this.db.prepare('UPDATE pomodoro_status SET rest = ? WHERE id = 1');
   /** `node-cron`のスケジュール。 jsonに書き込まずオンメモリで管理するため、強制終了で揮発する。 */
   private scheduleTask: ScheduledTask | null = null;
 
   constructor() {
-    if (!REDIS_URL) {
-      throw new Error('REDIS_URLが設定されていません');
-    }
-    this.redis = new Redis(REDIS_URL);
     this.restore();
   }
 
-  /** redisの値をinmemoryにコピー(キャッシュ)/復元する。 */
-  private async restore() {
-    const inmemory = await this.redis.hgetall(HKEY);
-    Object.entries(inmemory).forEach(([k, v]) => Object.assign(this.inmemory, { [k]: JSON.parse(v) }));
+  /** sqliteの値をinmemoryにコピー(キャッシュ)/復元する。 */
+  private restore() {
+    const row = this.statementRestore.get() as {
+      start_at: string | null;
+      spent: number;
+      wave: number;
+      rest: number;
+    } | undefined;
+    if (!row) { return; }
+    this.inmemory = {
+      startAt: row.start_at ? new Date(row.start_at) : null,
+      spent: row.spent,
+      wave: row.wave,
+      rest: !!row.rest
+    };
   }
 
   /** ポモドーロタイマーが始動した時間。 */
@@ -34,7 +42,7 @@ export class PomodoroStatus {
 
   set startAt(startAt: Date | null) {
     this.inmemory.startAt = startAt;
-    this.redis.hset(HKEY, 'startAt', JSON.stringify(startAt));
+    this.statementSetStartAt.run(startAt ? startAt.toISOString() : null);
   }
 
   /** ポモドーロタイマーが始動してから経過した時間(分)。 */
@@ -44,7 +52,7 @@ export class PomodoroStatus {
 
   set spent(spent: number) {
     this.inmemory.spent = spent;
-    this.redis.hset(HKEY, 'spent', spent);
+    this.statementSetSpent.run(spent);
   }
 
   /** 何度目のポモドーロかの回数。 */
@@ -54,7 +62,7 @@ export class PomodoroStatus {
 
   set wave(wave: number) {
     this.inmemory.wave = wave;
-    this.redis.hset(HKEY, 'wave', wave);
+    this.statementSetWave.run(wave);
   }
 
   /** 現在休憩中のときtrueになる。 */
@@ -64,7 +72,7 @@ export class PomodoroStatus {
 
   set rest(rest: boolean) {
     this.inmemory.rest = rest;
-    this.redis.hset(HKEY, 'rest', JSON.stringify(rest));
+    this.statementSetRest.run(rest ? 1 : 0);
   }
 
   /** 設定されているcronのスケジュール。 */

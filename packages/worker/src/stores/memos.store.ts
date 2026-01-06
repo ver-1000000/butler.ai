@@ -1,6 +1,4 @@
-import Redis from 'ioredis';
-
-import { REDIS_URL } from '@butler/core';
+import { getSqliteDb } from '@butler/core';
 import { PrettyText } from '../utils/pretty-text.util';
 
 /** `MemoStore`にアクセスした結果を使いやすくするためにラップする型。 */
@@ -13,46 +11,42 @@ interface StoreResult<T = string | Record<string, string>> {
   value: T;
 }
 
-/** Redisで利用するトップキー。 */
-const HKEY = 'MEMO';
-
 /** memoの情報をjsonに永続化して保存するためのストア用クラス。 */
 export class MemosStore {
-  private redis: Redis;
-
-  constructor() {
-    if (!REDIS_URL) {
-      throw new Error('REDIS_URLが設定されていません');
-    }
-    this.redis = new Redis(REDIS_URL);
-  }
+  private db = getSqliteDb();
+  private statementData = this.db.prepare('SELECT key, value FROM memos ORDER BY key');
+  private statementGet = this.db.prepare('SELECT value FROM memos WHERE key = ?');
+  private statementSet = this.db.prepare('INSERT INTO memos (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+  private statementDel = this.db.prepare('DELETE FROM memos WHERE key = ?');
 
   /** 設定されている値をすべて取得する。 */
-  async data(): Promise<Omit<StoreResult<Record<string, string>>, 'key'>> {
-    const value  = await this.redis.hgetall(HKEY);
+  data(): Omit<StoreResult<Record<string, string>>, 'key'> {
+    const rows   = this.statementData.all() as { key: string; value: string }[];
+    const value  = Object.fromEntries(rows.map(row => [row.key, row.value]));
     const pretty = PrettyText.markdownList('', ...Object.entries(value)) || 'Memoは一つもありません:snail:';
     return { pretty, value };
   }
 
   /** データストアから値を取得する。 */
-  async get(key: string): Promise<StoreResult<string | null>> {
-    const value  = await this.redis.hget(HKEY, key);
+  get(key: string): StoreResult<string | null> {
+    const row    = this.statementGet.get(key) as { value: string } | undefined;
+    const value  = row?.value ?? null;
     const pretty = value == null ? `**${key}** は設定されていません:cry:` : `**${key}**\n${value ? PrettyText.code(value) : '値は空です:ghost:'}`;
     return { pretty, key, value };
   }
 
   /** データストアに値を設定する。 */
-  async set(key: string, value: string): Promise<StoreResult<string>> {
-    await this.redis.hset(HKEY, key, value);
-    const pretty = `**${key}** ${value ? `に次の内容をメモしました:wink:\n${PrettyText.code(value)}` : 'とメモしました:cat:'}`
+  set(key: string, value: string): StoreResult<string> {
+    this.statementSet.run(key, value);
+    const pretty = `**${key}** ${value ? `に次の内容をメモしました:wink:\n${PrettyText.code(value)}` : 'とメモしました:cat:'}`;
     return { pretty, key, value };
   }
 
   /** データストアから値を削除する。 */
-  async del(key: string): Promise<StoreResult<string | null>> {
-    const value  = (await this.get(key)).value;
+  del(key: string): StoreResult<string | null> {
+    const value  = this.get(key).value;
     const pretty = value == null ? `**${key}** は設定されていません:cry:` : `**${key}** を削除しました:wave:${value ? '\n' + PrettyText.code(value) : ''}`;
-    if (value != null) { await this.redis.hdel(HKEY, key); }
+    if (value != null) { this.statementDel.run(key); }
     return { pretty, key, value };
   }
 }
