@@ -38,6 +38,20 @@ HerokuやGCPにデプロイすると無料枠で動かせてイイカンジで�
 └── ... # 省略
 ```
 
+## Discordサーバー連携
+1. Discord開発者ポータルを開く: https://discord.com/developers/applications
+2. 連携対象のアプリを選択(ない場合は、`New Application`)して、左メニューから「OAuth2」→「URL Generator」を開く
+3. Scopesで `bot` と `applications.commands` を選択する
+4. 現状、必要な最低限のBot Permissionsは次の通り:
+   - View Channels / Send Messages / Read Message History
+   - Add Reactions / Manage Messages(リアクションの一括削除に必要)
+   - Connect / Speak / Mute Members(ポモドーロ用の音声参加/再生/ミュート制御に必要)
+   - Embed Links(引用やリンクの見栄えを整えるために必要)
+5. 生成されたURLをコピーしてブラウザで開く
+6. 追加先のDiscordサーバーを選択して「認証」する
+7. 認証後、サーバー内にボットが参加していることを確認する
+8. 以降の起動手順に進む(環境変数の `DISCORD_TOKEN` が必要)
+
 ## ローカルでの環境構築
 ### 前提
 - 対象のDiscordサーバーにBOTがログインしている状態にしておくこと
