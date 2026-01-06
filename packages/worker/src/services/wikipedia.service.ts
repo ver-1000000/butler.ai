@@ -35,19 +35,19 @@ export class WikipediaService {
 
   /** Clientからのイベント監視を開始する。 */
   run() {
-    this.client.on('interactionCreate', interaction => {
+    this.client.on('interactionCreate', async interaction => {
       if (!interaction.isChatInputCommand()) { return; }
       if (interaction.commandName !== 'butler') { return; }
       if (interaction.options.getSubcommandGroup() !== 'wiki') { return; }
-      this.onCommand(interaction);
+      await this.onCommand(interaction);
     });
   }
 
   /** Slash Commandから各処理を呼び出すFacade関数。 */
-  private onCommand(interaction: ChatInputCommandInteraction) {
+  private async onCommand(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
-    if (subcommand === 'summary') { this.summary(interaction); }
-    if (subcommand === 'help') { this.help(interaction); }
+    if (subcommand === 'summary') { await this.summary(interaction); }
+    if (subcommand === 'help') { await this.help(interaction); }
   }
 
   /** wikiからコンテンツのサマリーを取得する。 */
@@ -64,7 +64,12 @@ export class WikipediaService {
       const text    = items.length ? success() : fail();
       await interaction.reply(text);
     } catch (e) {
-      await interaction.reply('検索に失敗しました:smiling_face_with_tear: Wikipediaのサーバーに何かあったかもしれません:pleading_face:');
+      const errorMessage = '検索に失敗しました:smiling_face_with_tear: Wikipediaのサーバーに何かあったかもしれません:pleading_face:';
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(errorMessage);
+      } else {
+        await interaction.reply(errorMessage);
+      }
     }
   }
 

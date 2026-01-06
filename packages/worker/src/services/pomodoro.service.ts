@@ -28,7 +28,7 @@ const HELP = {
   ]
 } as const;
 
-  /** ポモドーロタイマー機能を提供するアプリケーションクラス。 */
+/** ポモドーロタイマー機能を提供するアプリケーションクラス。 */
 export class PomodoroService {
   status = new PomodoroStatus();
   player = createAudioPlayer();
@@ -47,22 +47,22 @@ export class PomodoroService {
       this.restart();
     });
     this.client.on('voiceStateUpdate', (oldState, newState) => this.onVoiceStateUpdate(oldState, newState));
-    this.client.on('interactionCreate', interaction => {
+    this.client.on('interactionCreate', async interaction => {
       if (!interaction.isChatInputCommand()) { return; }
       if (interaction.commandName !== 'butler') { return; }
       if (interaction.options.getSubcommandGroup() !== 'pomodoro') { return; }
-      this.onCommand(interaction);
+      await this.onCommand(interaction);
     });
     return this;
   }
 
   /** Slash Commandから各処理を呼び出すFacade関数。 */
-  private onCommand(interaction: ChatInputCommandInteraction) {
+  private async onCommand(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
-    if (subcommand === 'start') { this.start(interaction); }
-    if (subcommand === 'stop') { this.stop(interaction); }
-    if (subcommand === 'status') { this.sendPrettyStatus(interaction); }
-    if (subcommand === 'help') { this.help(interaction); }
+    if (subcommand === 'start') { await this.start(interaction); }
+    if (subcommand === 'stop') { await this.stop(interaction); }
+    if (subcommand === 'status') { await this.sendPrettyStatus(interaction); }
+    if (subcommand === 'help') { await this.help(interaction); }
   }
 
   /**

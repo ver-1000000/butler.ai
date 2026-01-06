@@ -21,23 +21,23 @@ export class MemoService {
 
   /** Clientからのイベント監視を開始する。 */
   run() {
-    this.client.on('interactionCreate', interaction => {
+    this.client.on('interactionCreate', async interaction => {
       if (!interaction.isChatInputCommand()) { return; }
       if (interaction.commandName !== 'butler') { return; }
       if (interaction.options.getSubcommandGroup() !== 'memo') { return; }
-      this.onCommand(interaction);
+      await this.onCommand(interaction);
     });
     return this;
   }
 
   /** Slash Commandから各処理を呼び出すFacade関数。 */
-  private onCommand(interaction: ChatInputCommandInteraction) {
+  private async onCommand(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
-    if (subcommand === 'get') { this.get(interaction); }
-    if (subcommand === 'set') { this.set(interaction); }
-    if (subcommand === 'remove') { this.remove(interaction); }
-    if (subcommand === 'list') { this.list(interaction); }
-    if (subcommand === 'help') { this.help(interaction); }
+    if (subcommand === 'get') { await this.get(interaction); }
+    if (subcommand === 'set') { await this.set(interaction); }
+    if (subcommand === 'remove') { await this.remove(interaction); }
+    if (subcommand === 'list') { await this.list(interaction); }
+    if (subcommand === 'help') { await this.help(interaction); }
   }
 
   /** keyにマッチする値を取得する。 */
