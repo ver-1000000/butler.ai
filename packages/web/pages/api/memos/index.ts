@@ -1,11 +1,10 @@
 import { Request, Response } from "express";
-import Redis from 'ioredis';
-import { REDIS_URL } from '@butler/core';
+import { getSqliteDb } from '@butler/core';
 
-const HKEY    = 'MEMO';
-const redis   = new Redis(REDIS_URL);
+const db = getSqliteDb();
 const handler = async (_req: Request, res: Response) => {
-  const data = await redis.hgetall(HKEY);
+  const rows = db.prepare('SELECT key, value FROM memos ORDER BY key').all() as { key: string; value: string }[];
+  const data = Object.fromEntries(rows.map(row => [row.key, row.value]));
   res.status(200).json(data);
 }
 export default handler;

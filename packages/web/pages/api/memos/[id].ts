@@ -1,14 +1,12 @@
 import { Request, Response } from "express";
-import Redis from 'ioredis';
-import { REDIS_URL } from '@butler/core';
+import { getSqliteDb } from '@butler/core';
 
-const HKEY    = 'MEMO';
-const redis   = new Redis(REDIS_URL);
+const db = getSqliteDb();
 const handler = async (req: Request, res: Response) => {
   const { id } = req.query;
-  const data = await redis.hget(HKEY, String(id));
-  if (data) {
-    res.status(200).json(data);
+  const row  = db.prepare('SELECT value FROM memos WHERE key = ?').get(String(id)) as { value: string } | undefined;
+  if (row?.value) {
+    res.status(200).json(row.value);
   } else {
     res.status(404).json({ message: 'Not Found.' });
   }

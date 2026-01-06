@@ -4,6 +4,7 @@ node_modules/
 .build-cache/
 .data/*
 !.data/.keep
+data/
 .env
 *.tsbuildinfo
 Session.vim

@@ -1,14 +1,11 @@
 import { Request, Response } from "express";
-import Redis from 'ioredis';
-import { REDIS_URL } from '@butler/core';
+import { getSqliteDb } from '@butler/core';
 import { Sticker } from '@butler/worker/src/stores/stickers.store';
 
-/** Redisで利用するトップキー。 */
-const HKEY    = 'STICKER';
-const redis   = new Redis(REDIS_URL);
+const db = getSqliteDb();
 const handler = async (req: Request, res: Response) => {
   const { id } = req.query;
-  const data: Sticker | null = JSON.parse((await redis.hget(HKEY, String(id))) ?? 'null');
+  const data = db.prepare('SELECT id, regexp FROM stickers WHERE id = ?').get(String(id)) as Sticker | undefined;
   if (data) {
     res.status(200).json(data);
   } else {

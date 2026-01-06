@@ -1,10 +1,7 @@
 import { ActivityType, Client, ClientUser, GatewayIntentBits, Partials, TextChannel } from 'discord.js';
-import type { RequestInfo, RequestInit, Response } from 'node-fetch';
-
 import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from '@butler/core';
 import { MemosStore } from './stores/memos.store';
 import { StickersStore } from './stores/stickers.store';
-
 import { NotifyVoiceChannelService } from './services/notify-voice-channel.service';
 import { MemoService } from './services/memo.service';
 import { PomodoroService } from './services/pomodoro.service';
@@ -12,7 +9,6 @@ import { InteractiveService } from './services/interactive.service';
 import { WikipediaService } from './services/wikipedia.service';
 import { StickerService } from './services/sticker.service';
 import { registerSlashCommands } from './commands/register-slash-commands';
-import { dynamicFetch } from './utils/fetch.util';
 
 /** 起点となるメインのアプリケーションクラス。 */
 class App {
@@ -21,7 +17,7 @@ class App {
   /** アプリケーションクラスを起動する。 */
   run() {
     this.confirmToken();
-    this.wakeUpHost();
+    this.setupShutdownHandlers();
     this.client.on('clientReady', async () => {
       this.initializeBotStatus(this.client.user);
       await registerSlashCommands(this.client);
@@ -35,14 +31,6 @@ class App {
     if (DISCORD_TOKEN) { return; }
     console.log('DISCORD_TOKENが設定されていません。');
     process.exit(1);
-  }
-
-  /** WAKEUP_URLが環境変数で設定されている場合、定期的にGETリクエストを送ることでホストのsleepを防ぐ。 */
-  private wakeUpHost() {
-    const url = process.env.WAKEUP_URL || '';
-    if (url === '') { return; }
-    const interval = 10 * Number(process.env.WAKEUP_INTERVAL || '60') * 1000; // default: 10min
-    setInterval(() => dynamicFetch(url), interval);
   }
 
   /** readyイベントにフックして、ボットのステータスなどを設定する。 */
@@ -63,6 +51,19 @@ class App {
   private send(msg: string) {
     const notifyChannel = this.client.channels.cache.get(NOTIFY_TEXT_CHANNEL_ID || '') as TextChannel | undefined;
     notifyChannel?.send(msg);
+  }
+
+  /** 終了時にDiscord接続を閉じてステータスを落とす。 */
+  private setupShutdownHandlers() {
+    const shutdown = (signal: NodeJS.Signals) => {
+      console.log(`shutdown - received ${signal}`);
+      Promise.resolve()
+        .then(() => this.client.destroy())
+        .catch(error => console.error('shutdown error', error))
+        .finally(() => process.exit(0));
+    };
+    process.once('SIGINT', shutdown);
+    process.once('SIGTERM', shutdown);
   }
 }
 
