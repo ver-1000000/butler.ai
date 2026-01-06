@@ -1,7 +1,7 @@
 import { Client, Message, type MessageCreateOptions } from 'discord.js';
 
 import { DETECT_STICKER_RATE } from '@butler/core';
-import { PrettyText } from '../lib/pretty-text';
+import { PrettyText } from '../utils/pretty-text.util';
 import { StickersStore } from '../stores/stickers.store';
 import { sendToChannel } from '../utils/discord.util';
 

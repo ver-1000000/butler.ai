@@ -1,7 +1,7 @@
 import type { RequestInfo, RequestInit, Response } from 'node-fetch';
 
 import { Client, Message, type MessageCreateOptions } from 'discord.js';
-import { PrettyText } from '../lib/pretty-text';
+import { PrettyText } from '../utils/pretty-text.util';
 import { sendToChannel } from '../utils/discord.util';
 import { dynamicFetch } from '../utils/fetch.util';
 

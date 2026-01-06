@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { REDIS_URL } from '@butler/core';
-import { PrettyText } from '../lib/pretty-text';
+import { PrettyText } from '../utils/pretty-text.util';
 
 /** ストアにアクセスした結果を使いやすくするためにラップする型。 */
 interface StoreResult<T = string | Record<string, string>> {

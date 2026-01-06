@@ -3,7 +3,7 @@ import { AudioPlayerStatus, createAudioPlayer, createAudioResource, DiscordGatew
 import { schedule } from 'node-cron';
 
 import { NOTIFY_TEXT_CHANNEL_ID, POMODORO_VOICE_CHANNEL_ID } from '@butler/core';
-import { PrettyText } from '../lib/pretty-text';
+import { PrettyText } from '../utils/pretty-text.util';
 import { PomodoroStatus } from '../models/pomodoro-status.model';
 import { sendToChannel } from '../utils/discord.util';
 
