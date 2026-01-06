@@ -21,10 +21,14 @@ export interface Sticker {
 /** 画像と正規表現のレコードを表すクラス。 */
 export class StickersStore {
   private db = getSqliteDb();
+  private statementData = this.db.prepare('SELECT id, regexp FROM stickers ORDER BY id');
+  private statementGet = this.db.prepare('SELECT id, regexp FROM stickers WHERE id = ?');
+  private statementSet = this.db.prepare('INSERT INTO stickers (id, regexp) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET regexp = excluded.regexp');
+  private statementDel = this.db.prepare('DELETE FROM stickers WHERE id = ?');
 
   /** 設定されている値をすべて取得する。 */
-  async data(): Promise<StoreResult<Record<string, Sticker>>> {
-    const rows   = this.db.prepare('SELECT id, regexp FROM stickers ORDER BY id').all() as Sticker[];
+  data(): StoreResult<Record<string, Sticker>> {
+    const rows   = this.statementData.all() as Sticker[];
     const value  = rows.reduce<Record<string, Sticker>>((a, row) => ({ ...a, [row.id]: row }), {});
     const items  = rows.map<[string, string]>(({ id, regexp }) => [id, regexp]);
     const pretty = PrettyText.markdownList('', ...items) || 'Stickerは一つもありません:drum:';
@@ -32,25 +36,25 @@ export class StickersStore {
   }
 
   /** データストアから値を取得する。 */
-  async get(key: string): Promise<StoreResult<Sticker | null>> {
-    const row    = this.db.prepare('SELECT id, regexp FROM stickers WHERE id = ?').get(key) as Sticker | undefined;
+  get(key: string): StoreResult<Sticker | null> {
+    const row    = this.statementGet.get(key) as Sticker | undefined;
     const value  = row ?? null;
     const pretty = value == null ? `**${key}** は設定されていません:cry:` : ` **\`${key}\`** \`/${value.regexp}/\``;
     return { pretty, key, value };
   }
 
   /** データストアに値を設定する。 */
-  async set(key: string, value: string): Promise<StoreResult<string>> {
-    this.db.prepare('INSERT INTO stickers (id, regexp) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET regexp = excluded.regexp').run(key, value);
+  set(key: string, value: string): StoreResult<string> {
+    this.statementSet.run(key, value);
     const pretty = `**\`${key}\`** に **\`/${value}/\`** を設定しました:pleading_face:`;
     return { pretty, key, value };
   }
 
   /** データストアから値を削除する。 */
-  async del(key: string): Promise<StoreResult<Sticker | null>> {
-    const value  = (await this.get(key)).value;
+  del(key: string): StoreResult<Sticker | null> {
+    const value  = this.get(key).value;
     const pretty = value == null ? `**${key}** は設定されていません:cry:` : `**${key}** を削除しました:wave:${value ? '\n' + PrettyText.code(value.regexp) : ''}`;
-    if (value != null) { this.db.prepare('DELETE FROM stickers WHERE id = ?').run(key); }
+    if (value != null) { this.statementDel.run(key); }
     return { pretty, key, value };
   }
 }

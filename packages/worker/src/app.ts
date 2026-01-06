@@ -28,7 +28,7 @@ class App {
 
   /** DISCORD_TOKENが設定されていなければ異常終了させる。 */
   private confirmToken() {
-    if (DISCORD_TOKEN) { return; }
+    if (DISCORD_TOKEN) return;
     console.log('DISCORD_TOKENが設定されていません。');
     process.exit(1);
   }
@@ -36,9 +36,7 @@ class App {
   /** readyイベントにフックして、ボットのステータスなどを設定する。 */
   private initializeBotStatus(user: ClientUser | null) {
     console.log(`ready - started worker server`);
-    if (user) {
-      console.log(`logged in as ${user.tag} (${user.id})`);
-    }
+    if (user) console.log(`logged in as ${user.tag} (${user.id})`);
     user?.setPresence({ activities: [{ name: 'みんなの発言', type: ActivityType.Watching }] });
   }
 
@@ -76,7 +74,9 @@ class App {
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent
   ];
-  const client      = new Client({ intents, partials: [Partials.Message, Partials.Channel, Partials.Reaction] });
+  /** Discordクライアントの起動設定 */
+  const clientOptions = { intents, partials: [Partials.Message, Partials.Channel, Partials.Reaction] };
+  const client      = new Client(clientOptions);
   const memosStore  = new MemosStore();
   const entityStore = new StickersStore();
   new NotifyVoiceChannelService(client).run();

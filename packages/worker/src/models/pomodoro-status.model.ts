@@ -5,6 +5,11 @@ import { getSqliteDb } from '@butler/core';
 export class PomodoroStatus {
   private db = getSqliteDb();
   private inmemory = { startAt: null as Date | null, spent: 0, wave: 0, rest: true };
+  private statementRestore = this.db.prepare('SELECT start_at, spent, wave, rest FROM pomodoro_status WHERE id = 1');
+  private statementSetStartAt = this.db.prepare('UPDATE pomodoro_status SET start_at = ? WHERE id = 1');
+  private statementSetSpent = this.db.prepare('UPDATE pomodoro_status SET spent = ? WHERE id = 1');
+  private statementSetWave = this.db.prepare('UPDATE pomodoro_status SET wave = ? WHERE id = 1');
+  private statementSetRest = this.db.prepare('UPDATE pomodoro_status SET rest = ? WHERE id = 1');
   /** `node-cron`のスケジュール。 jsonに書き込まずオンメモリで管理するため、強制終了で揮発する。 */
   private scheduleTask: ScheduledTask | null = null;
 
@@ -14,7 +19,7 @@ export class PomodoroStatus {
 
   /** sqliteの値をinmemoryにコピー(キャッシュ)/復元する。 */
   private restore() {
-    const row = this.db.prepare('SELECT start_at, spent, wave, rest FROM pomodoro_status WHERE id = 1').get() as {
+    const row = this.statementRestore.get() as {
       start_at: string | null;
       spent: number;
       wave: number;
@@ -37,7 +42,7 @@ export class PomodoroStatus {
 
   set startAt(startAt: Date | null) {
     this.inmemory.startAt = startAt;
-    this.db.prepare('UPDATE pomodoro_status SET start_at = ? WHERE id = 1').run(startAt ? startAt.toISOString() : null);
+    this.statementSetStartAt.run(startAt ? startAt.toISOString() : null);
   }
 
   /** ポモドーロタイマーが始動してから経過した時間(分)。 */
@@ -47,7 +52,7 @@ export class PomodoroStatus {
 
   set spent(spent: number) {
     this.inmemory.spent = spent;
-    this.db.prepare('UPDATE pomodoro_status SET spent = ? WHERE id = 1').run(spent);
+    this.statementSetSpent.run(spent);
   }
 
   /** 何度目のポモドーロかの回数。 */
@@ -57,7 +62,7 @@ export class PomodoroStatus {
 
   set wave(wave: number) {
     this.inmemory.wave = wave;
-    this.db.prepare('UPDATE pomodoro_status SET wave = ? WHERE id = 1').run(wave);
+    this.statementSetWave.run(wave);
   }
 
   /** 現在休憩中のときtrueになる。 */
@@ -67,7 +72,7 @@ export class PomodoroStatus {
 
   set rest(rest: boolean) {
     this.inmemory.rest = rest;
-    this.db.prepare('UPDATE pomodoro_status SET rest = ? WHERE id = 1').run(rest ? 1 : 0);
+    this.statementSetRest.run(rest ? 1 : 0);
   }
 
   /** 設定されているcronのスケジュール。 */
