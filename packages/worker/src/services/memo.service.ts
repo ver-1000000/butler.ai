@@ -1,29 +1,19 @@
-import { Client, Message, type MessageCreateOptions } from 'discord.js';
+import { type ChatInputCommandInteraction, Client } from 'discord.js';
 
 import { PrettyText } from '../utils/pretty-text.util';
 import { MemosStore } from '../stores/memos.store';
 
-/** メッセージ(`content`)からコマンドに該当する文字列を除外する。 */
-const trimCommandsForConent = (content: string) => content.replace(/!memo\.?\w*\s*\n*/, '').trim();
-
 /** `GenerateText.help`に食わせるヘルプ文の定数。 */
 const HELP = {
-  DESC: `\`!memo\` コマンド - タイトルと本文のセットからなるメモを 登録/読取り/更新/削除 する機能`,
+  DESC: '`/butler memo` コマンド - タイトルと本文のセットからなるメモを 登録/読取り/更新/削除 する機能',
   ITEMS: [
-    ['!memo.get hoge', '`"hoge"`の値を取得します'],
-    ['!memo.set hoge foo', '`"hoge"` に値として `"foo"` を設定します(値はマークダウンや改行が可能)'],
-    ['!memo.remove hoge', '設定済の `"hoge"` の値を削除します'],
-    ['!memo.list', 'メモされた値をすべて表示します'],
-    ['!memo.help', '`!memo` コマンドのヘルプを表示します(エイリアス: `!memo`)'],
+    ['/butler memo get key:hoge', '`"hoge"`の値を取得します'],
+    ['/butler memo set key:hoge value:foo', '`"hoge"` に値として `"foo"` を設定します(値はマークダウンや改行が可能)'],
+    ['/butler memo remove key:hoge', '設定済の `"hoge"` の値を削除します'],
+    ['/butler memo list', 'メモされた値をすべて表示します'],
+    ['/butler memo help', '`/butler memo` コマンドのヘルプを表示します'],
   ]
 } as const;
-
-type SendableChannel = Message['channel'] & { send: (content: string | MessageCreateOptions) => Promise<unknown> };
-
-const sendToChannel = (channel: Message['channel'], content: string | MessageCreateOptions) => {
-  if (!('send' in channel)) { return; }
-  return (channel as SendableChannel).send(content);
-};
 
 /** `MemoStore`の値を操作するサービスクラス。 */
 export class MemoService {
@@ -31,57 +21,60 @@ export class MemoService {
 
   /** Clientからのイベント監視を開始する。 */
   run() {
-    this.client.on('messageCreate', message => this.onMessage(message));
+    this.client.on('interactionCreate', interaction => {
+      if (!interaction.isChatInputCommand()) { return; }
+      if (interaction.commandName !== 'butler') { return; }
+      if (interaction.options.getSubcommandGroup() !== 'memo') { return; }
+      this.onCommand(interaction);
+    });
     return this;
   }
 
-  /** `mesage`で関数を振り分けるファサード。 */
-  private onMessage(message: Message) {
-    const content = message.content;
-    if (message.author.bot) { return; } // botの発言は無視
-    if (content.startsWith('!memo.get')) { this.get(message); };
-    if (content.startsWith('!memo.set')) { this.set(message); };
-    if (content.startsWith('!memo.remove')) { this.remove(message); };
-    if (content.startsWith('!memo.list')) { this.list(message); };
-    if (content.startsWith('!memo.help') || content === '!memo') { this.help(message); };
+  /** Slash Commandから各処理を呼び出すFacade関数。 */
+  private onCommand(interaction: ChatInputCommandInteraction) {
+    const subcommand = interaction.options.getSubcommand();
+    if (subcommand === 'get') { this.get(interaction); }
+    if (subcommand === 'set') { this.set(interaction); }
+    if (subcommand === 'remove') { this.remove(interaction); }
+    if (subcommand === 'list') { this.list(interaction); }
+    if (subcommand === 'help') { this.help(interaction); }
   }
 
   /** keyにマッチする値を取得する。 */
-  private async get({ channel, content }: Message) {
-    const key = trimCommandsForConent(content);
-    sendToChannel(channel, (await this.memosStore.get(key)).pretty);
+  private async get(interaction: ChatInputCommandInteraction) {
+    const key = interaction.options.getString('key', true);
+    await interaction.reply((await this.memosStore.get(key)).pretty);
   }
 
   /**
    * bodyの最初の空白(もしくは改行)で前半部と後半部を分け、
    * 前半部をキーに、後半部を値にしたものをmemoとして登録する。
    */
-  private async set({ channel, content }: Message) {
-    const body  = trimCommandsForConent(content);
-    const key   = body.replace(/\s.*/g, '');
-    const value = body.replace(key, '').trim();
-    sendToChannel(channel, (await this.memosStore.set(key, value)).pretty);
+  private async set(interaction: ChatInputCommandInteraction) {
+    const key   = interaction.options.getString('key', true);
+    const value = interaction.options.getString('value', true);
+    await interaction.reply((await this.memosStore.set(key, value)).pretty);
   }
 
   /** bodyにマッチする値を削除する。 */
-  private async remove({ channel, content }: Message) {
-    const body  = trimCommandsForConent(content);
-    sendToChannel(channel, (await this.memosStore.del(body)).pretty);
+  private async remove(interaction: ChatInputCommandInteraction) {
+    const key = interaction.options.getString('key', true);
+    await interaction.reply((await this.memosStore.del(key)).pretty);
   }
 
   /** memoの値を一覧する。 */
-  private async list({ channel }: Message) {
+  private async list(interaction: ChatInputCommandInteraction) {
     const pretty = (await this.memosStore.data()).pretty;
     if (pretty.length < 2000) {
-      sendToChannel(channel, pretty);
+      await interaction.reply(pretty);
     } else {
-      sendToChannel(channel, { content: '**MEMO 一覧**', files: [{ name: 'MEMO.md', attachment: Buffer.from(pretty) }] });
+      await interaction.reply({ content: '**MEMO 一覧**', files: [{ name: 'MEMO.md', attachment: Buffer.from(pretty) }] });
     }
   }
 
   /** ヘルプを表示する。 */
-  private help({ channel }: Message) {
+  private help(interaction: ChatInputCommandInteraction) {
     const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    sendToChannel(channel, text);
+    return interaction.reply(text);
   }
 }

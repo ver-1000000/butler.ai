@@ -1,4 +1,4 @@
-import { ActivityType, MessageReaction, Client, Message, User, VoiceChannel, VoiceState, TextChannel, type MessageCreateOptions } from 'discord.js';
+import { ActivityType, type ChatInputCommandInteraction, MessageReaction, Client, Message, User, VoiceChannel, VoiceState, TextChannel } from 'discord.js';
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, DiscordGatewayAdapterCreator, joinVoiceChannel } from '@discordjs/voice';
 import { schedule } from 'node-cron';
 
@@ -17,18 +17,18 @@ const POMODORO_WORK_DURATION = DEBUG ? 1 : 25;
 /** `GenerateText.help`に食わせるヘルプ文の定数。 */
 const HELP = {
   DESC: [
-    '`!pomodoro` コマンド - 音声チャンネルを利用した**ポモドーロタイマー**機能',
+    '`/butler pomodoro` コマンド - 音声チャンネルを利用した**ポモドーロタイマー**機能',
     '(**ポモドーロタイマー用音声チャンネルに参加した状態**で、以下のコマンドを利用)'
   ].join('\n'),
   ITEMS: [
-    ['!pomodoro.start', 'ポモドーロタイマーを開始(リセット)します'],
-    ['!pomodoro.stop', 'ポモドーロタイマーを終了します'],
-    ['!pomodoro.status', '現在のポモドーロステータスを表示します'],
-    ['!pomodoro.help', '`!pomodoro` コマンドのヘルプを表示します(エイリアス: `!pomodoro`)']
+    ['/butler pomodoro start', 'ポモドーロタイマーを開始(リセット)します'],
+    ['/butler pomodoro stop', 'ポモドーロタイマーを終了します'],
+    ['/butler pomodoro status', '現在のポモドーロステータスを表示します'],
+    ['/butler pomodoro help', '`/butler pomodoro` コマンドのヘルプを表示します']
   ]
 } as const;
 
-/** ポモドーロタイマー機能を提供するアプリケーションクラス。 */
+  /** ポモドーロタイマー機能を提供するアプリケーションクラス。 */
 export class PomodoroService {
   status = new PomodoroStatus();
   player = createAudioPlayer();
@@ -47,18 +47,22 @@ export class PomodoroService {
       this.restart();
     });
     this.client.on('voiceStateUpdate', (oldState, newState) => this.onVoiceStateUpdate(oldState, newState));
-    this.client.on('messageCreate', message => this.onMessage(message));
+    this.client.on('interactionCreate', interaction => {
+      if (!interaction.isChatInputCommand()) { return; }
+      if (interaction.commandName !== 'butler') { return; }
+      if (interaction.options.getSubcommandGroup() !== 'pomodoro') { return; }
+      this.onCommand(interaction);
+    });
     return this;
   }
 
-  /** Messageから各処理を呼び出すFacade関数。 */
-  private onMessage(message: Message) {
-    const content = message.content;
-    if (message.author.bot) { return; } // botの発言は無視
-    if (content.startsWith('!pomodoro.start')) { this.start(message); };
-    if (content.startsWith('!pomodoro.stop')) { this.stop(message); };
-    if (content.startsWith('!pomodoro.status')) { this.sendPrettyStatus(message); };
-    if (content.startsWith('!pomodoro.help') || content === '!pomodoro') { this.help(message); };
+  /** Slash Commandから各処理を呼び出すFacade関数。 */
+  private onCommand(interaction: ChatInputCommandInteraction) {
+    const subcommand = interaction.options.getSubcommand();
+    if (subcommand === 'start') { this.start(interaction); }
+    if (subcommand === 'stop') { this.stop(interaction); }
+    if (subcommand === 'status') { this.sendPrettyStatus(interaction); }
+    if (subcommand === 'help') { this.help(interaction); }
   }
 
   /**
@@ -84,13 +88,9 @@ export class PomodoroService {
   }
 
   /** `this.status`を初期化し、ポモドーロタイマーを起動させて発言通知する。 */
-  private start({ channel }: Message) {
-    this.status.reset();
-    this.status.startAt = ((d: Date) => { d.setSeconds(0); return d })(new Date());
-    this.status.task  = schedule('* * * * *', () => this.onSchedule());
-    this.doWork();
-    sendToChannel(channel, `ポモドーロを開始します:timer: **:loudspeaker:${this.voiceChannel?.name}** に参加して、作業を始めてください:fire:`);
-    this.client.user?.setPresence({ activities: [{ name: 'ポモドーロ', type: ActivityType.Playing }] });
+  private async start(interaction: ChatInputCommandInteraction) {
+    this.startPomodoro();
+    await interaction.reply(this.startMessage());
   }
 
   /** PomodoroService起動時に`this.status.startAt`が設定されている時、中断からの復帰を行う。 */
@@ -107,29 +107,20 @@ export class PomodoroService {
   }
 
   /** ポモドーロタイマーを終了/停止させて発言通知する。 */
-  private async stop({ channel }: Message) {
-    this.status.reset();
-    await this.setMute(false);
-    sendToChannel(channel, 'ポモドーロを終了します:timer: お疲れ様でした:island:');
-    this.client.user?.setPresence({ activities: [{ name: 'みんなの発言', type: ActivityType.Watching }] });
+  private async stop(interaction: ChatInputCommandInteraction) {
+    await this.stopPomodoro();
+    await interaction.reply(this.stopMessage());
   }
 
   /** ステータスをユーザーフレンドリーな文字列として整形した値をメッセージとして発言通知する。 */
-  private sendPrettyStatus({ channel }: Message) {
-    const date = this.status.startAt?.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-    const text = `
-    **タイマー開始日時: **_${date ? date + ' :timer:' : '停止中:sleeping:'}_
-    **ポモドーロタイマー: **_${this.status.wave} 回目 ${this.status.spent % POMODORO_DURATION} 分経過_
-    **ポモドーロの状態: **_${this.status.startAt ? this.status.rest ? '休憩中:island:' : '作業中:fire:' : '停止中:sleeping:'}_
-    `.replace(/\n\s*/g, '\n');
-    sendToChannel(channel, text);
+  private async sendPrettyStatus(interaction: ChatInputCommandInteraction) {
+    await interaction.reply(this.prettyStatusText());
   }
 
   /** ヘルプを発言通知する。 */
-  private async help({ channel }: Message) {
+  private async help(interaction: ChatInputCommandInteraction) {
     const text    = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    const message = await sendToChannel(channel, text);
-    if (!message) { return; }
+    const message = await interaction.reply({ content: text, fetchReply: true }) as Message;
     this.commandsEmoji(message);
   }
 
@@ -140,16 +131,24 @@ export class PomodoroService {
     const time       = 60000;
     const additional =
       `\n\n**${Math.round(time / 1000)}秒以内にこのメッセージへ、以下のリアクション(絵文字)を行うことでもコマンドを実行できます。**\n` +
-      PrettyText.code('1️⃣ !pomodoro.start! / 2️⃣ !pomodoro.stop / 3️⃣ !pomodoro.status');
+      PrettyText.code('1️⃣ /butler pomodoro start / 2️⃣ /butler pomodoro stop / 3️⃣ /butler pomodoro status');
     await message.edit(message.content + additional);
     const filter   = (reaction: MessageReaction, _: User) => Object.values(EMOJIS).includes(reaction.emoji?.name || '');
     const reaction = (await message.awaitReactions({ filter, max: 1, time }))?.first();
     await message.reactions.removeAll();
     await message.edit(message.content.replace(additional, ''));
     if (reaction?.emoji?.name) { await sendToChannel(message.channel, `---\n${reaction.emoji.name}を選択しました。\n---`); }
-    if (reaction?.emoji?.name === EMOJIS.ONE) { this.start(message); }
-    if (reaction?.emoji?.name === EMOJIS.TWO) { this.stop(message); }
-    if (reaction?.emoji?.name === EMOJIS.THREE) { this.sendPrettyStatus(message); }
+    if (reaction?.emoji?.name === EMOJIS.ONE) {
+      this.startPomodoro();
+      sendToChannel(message.channel, this.startMessage());
+    }
+    if (reaction?.emoji?.name === EMOJIS.TWO) {
+      await this.stopPomodoro();
+      sendToChannel(message.channel, this.stopMessage());
+    }
+    if (reaction?.emoji?.name === EMOJIS.THREE) {
+      sendToChannel(message.channel, this.prettyStatusText());
+    }
   }
 
   /** ポモドーロの作業時間開始を行う関数。 */
@@ -160,6 +159,32 @@ export class PomodoroService {
     await this.setMute(false);
     await this.playSound('src/assets/begin-work.ogg');
     await this.setMute(true);
+  }
+
+  /** ポモドーロタイマーを開始する。 */
+  private startPomodoro() {
+    this.status.reset();
+    this.status.startAt = ((d: Date) => { d.setSeconds(0); return d })(new Date());
+    this.status.task  = schedule('* * * * *', () => this.onSchedule());
+    this.doWork();
+    this.client.user?.setPresence({ activities: [{ name: 'ポモドーロ', type: ActivityType.Playing }] });
+  }
+
+  /** ポモドーロタイマーを停止する。 */
+  private async stopPomodoro() {
+    this.status.reset();
+    await this.setMute(false);
+    this.client.user?.setPresence({ activities: [{ name: 'みんなの発言', type: ActivityType.Watching }] });
+  }
+
+  /** 開始メッセージの文言を返す。 */
+  private startMessage() {
+    return `ポモドーロを開始します:timer: **:loudspeaker:${this.voiceChannel?.name}** に参加して、作業を始めてください:fire:`;
+  }
+
+  /** 停止メッセージの文言を返す。 */
+  private stopMessage() {
+    return 'ポモドーロを終了します:timer: お疲れ様でした:island:';
   }
 
   /** ポモドーロの作業時間終了を行う関数。 */
@@ -180,10 +205,25 @@ export class PomodoroService {
     this.player.play(createAudioResource(input));
     connection.subscribe(this.player);
     const promise = new Promise(resolve => this.player.on(AudioPlayerStatus.Idle, () => resolve(null))).then(async result => {
-      if (DEBUG) { this.sendPrettyStatus({ channel: await this.client.channels.fetch(NOTIFY_TEXT_CHANNEL_ID || '') } as Message); }
+      if (DEBUG) {
+        const channel = await this.client.channels.fetch(NOTIFY_TEXT_CHANNEL_ID || '');
+        if (channel && 'send' in channel) {
+          await channel.send(this.prettyStatusText());
+        }
+      }
       return result;
     });
     return promise;
+  }
+
+  /** 現在のポモドーロ状態を整形した文字列を返す。 */
+  private prettyStatusText() {
+    const date = this.status.startAt?.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+    return `
+    **タイマー開始日時: **_${date ? date + ' :timer:' : '停止中:sleeping:'}_
+    **ポモドーロタイマー: **_${this.status.wave} 回目 ${this.status.spent % POMODORO_DURATION} 分経過_
+    **ポモドーロの状態: **_${this.status.startAt ? this.status.rest ? '休憩中:island:' : '作業中:fire:' : '停止中:sleeping:'}_
+    `.replace(/\n\s*/g, '\n');
   }
 
   /**
