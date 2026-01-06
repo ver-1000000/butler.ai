@@ -11,6 +11,7 @@ import { PomodoroService } from './services/pomodoro.service';
 import { InteractiveService } from './services/interactive.service';
 import { WikipediaService } from './services/wikipedia.service';
 import { StickerService } from './services/sticker.service';
+import { registerSlashCommands } from './commands/register-slash-commands';
 import { dynamicFetch } from './utils/fetch.util';
 
 /** 起点となるメインのアプリケーションクラス。 */
@@ -21,7 +22,10 @@ class App {
   run() {
     this.confirmToken();
     this.wakeUpHost();
-    this.client.on('clientReady', () => this.initializeBotStatus(this.client.user));
+    this.client.on('clientReady', async () => {
+      this.initializeBotStatus(this.client.user);
+      await registerSlashCommands(this.client);
+    });
     this.client.on('error', e => this.error(e));
     this.client.login(DISCORD_TOKEN);
   }

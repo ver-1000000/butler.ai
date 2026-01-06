@@ -1,4 +1,4 @@
-import { Client, Message, type MessageCreateOptions } from 'discord.js';
+import { type ChatInputCommandInteraction, Client, Message } from 'discord.js';
 
 import { DETECT_STICKER_RATE } from '@butler/core';
 import { PrettyText } from '../utils/pretty-text.util';
@@ -7,12 +7,12 @@ import { sendToChannel } from '../utils/discord.util';
 
 /** `GenerateText.help`に食わせるヘルプ文の定数。 */
 const HELP = {
-  DESC: `\`!sticker\` コマンド - チャットを監視して、正規表現にマッチしたスタンプ画像を表示する機能`,
+  DESC: '`/butler sticker` コマンド - チャットを監視して、正規表現にマッチしたスタンプ画像を表示する機能',
   ITEMS: [
-    ['!sticker.set http://example.com/hoge.jpg /abc/', '`http://example.com/hoge.jpg` に正規表現 `/abc/` を設定(新規追加/上書き)します'],
-    ['!sticker.remove http://example.com/hoge.jpg', '`http://example.com/hoge.jpg` が設定されていれば削除します'],
-    ['!sticker.list', '登録されている値を一覧します'],
-    ['!sticker.help', '`!sticker` コマンドのヘルプを表示します(エイリアス: `!sticker`)']
+    ['/butler sticker set url:http://example.com/hoge.jpg regexp:/abc/', '`http://example.com/hoge.jpg` に正規表現 `/abc/` を設定(新規追加/上書き)します'],
+    ['/butler sticker remove url:http://example.com/hoge.jpg', '`http://example.com/hoge.jpg` が設定されていれば削除します'],
+    ['/butler sticker list', '登録されている値を一覧します'],
+    ['/butler sticker help', '`/butler sticker` コマンドのヘルプを表示します']
   ]
 } as const;
 
@@ -22,49 +22,60 @@ export class StickerService {
 
   /** Clientからのイベント監視を開始する。 */
   run() {
+    this.client.on('interactionCreate', interaction => {
+      if (!interaction.isChatInputCommand()) { return; }
+      if (interaction.commandName !== 'butler') { return; }
+      if (interaction.options.getSubcommandGroup() !== 'sticker') { return; }
+      this.onCommand(interaction);
+    });
     this.client.on('messageCreate', message => this.onMessage(message));
     return this;
+  }
+
+  /** Slash Commandで関数を振り分けるファサード。 */
+  private onCommand(interaction: ChatInputCommandInteraction) {
+    const subcommand = interaction.options.getSubcommand();
+    if (subcommand === 'set') { this.set(interaction); }
+    if (subcommand === 'remove') { this.remove(interaction); }
+    if (subcommand === 'list') { this.list(interaction); }
+    if (subcommand === 'help') { this.help(interaction); }
   }
 
   /** `message`で関数を振り分けるファサード。 */
   private onMessage(message: Message) {
     const content   = message.content;
-    const body      = content.replace(/!sticker\.?\w*\s*\n*/, '').trim(); // コマンド以外のテキスト部分
     if (message.author.bot) { return; } // botの発言は無視
-    if (content.startsWith('!sticker.set')) { this.set(message, { body }); };
-    if (content.startsWith('!sticker.remove')) { this.remove(message, { body }); };
-    if (content.startsWith('!sticker.list')) { this.list(message); };
-    if (content.startsWith('!sticker.help') || content === '!sticker') { this.help(message); };
-    if (!content.startsWith('!')) { this.sendSticker(message); }
+    this.sendSticker(message);
   }
 
-  /** `!sticker.set` コマンドを受け取った時、第一引数をキーに、第二引数を値にしたものを登録する。 */
-  private async set({ channel }: Message, { body }: { body: string }) {
-    const key   = body.replace(/\s.*/g, '');
-    const value = body.replace(key, '').trim().replace(/^\/|\/$/g, '');
-    sendToChannel(channel, (await this.stickersStore.set(key, value)).pretty);
+  /** `/sticker set` コマンドを受け取った時、第一引数をキーに、第二引数を値にしたものを登録する。 */
+  private async set(interaction: ChatInputCommandInteraction) {
+    const key   = interaction.options.getString('url', true);
+    const value = interaction.options.getString('regexp', true).replace(/^\/|\/$/g, '');
+    await interaction.reply((await this.stickersStore.set(key, value)).pretty);
   }
 
-  /** `!sticker.remove` コマンドを受け取った時、第一引数にマッチする値を削除する。 */
-  private async remove({ channel }: Message, { body: url }: { body: string }) {
-    sendToChannel(channel, (await this.stickersStore.del(url)).pretty);
+  /** `/sticker remove` コマンドを受け取った時、第一引数にマッチする値を削除する。 */
+  private async remove(interaction: ChatInputCommandInteraction) {
+    const url = interaction.options.getString('url', true);
+    await interaction.reply((await this.stickersStore.del(url)).pretty);
   }
 
-  /** `!sticker.list` コマンドを受け取った時、値を一覧する。 */
-  private async list({ channel }: Message) {
+  /** `/sticker list` コマンドを受け取った時、値を一覧する。 */
+  private async list(interaction: ChatInputCommandInteraction) {
     const data = await this.stickersStore.data();
     if (data.pretty.length < 2000) {
-      sendToChannel(channel, data.pretty);
+      await interaction.reply(data.pretty);
     } else {
       const pretty = `[${Object.values(data.value).map(({ id, regexp }) => `\n  ["${id}", "${regexp}"]`).join(',')}\n]`;
-      sendToChannel(channel, { content: '**STICKER 一覧**', files: [{ name: 'STICKERS.md', attachment: Buffer.from(pretty) }] });
+      await interaction.reply({ content: '**STICKER 一覧**', files: [{ name: 'STICKERS.md', attachment: Buffer.from(pretty) }] });
     }
   }
 
   /** ヘルプを表示する。 */
-  private help({ channel }: Message) {
+  private help(interaction: ChatInputCommandInteraction) {
     const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
-    sendToChannel(channel, text);
+    return interaction.reply(text);
   }
 
   /** チャットからStickerの正規表現を検知した場合、DETECT_STICKER_RATEに従ってStickerを送信する。 */
