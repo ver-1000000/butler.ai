@@ -1,0 +1,26 @@
+services:
+  worker:
+    build:
+      context: .
+      target: worker
+    command: npm run prod:worker
+    environment:
+      NODE_ENV: "production"
+      # 必須の環境変数はcompose.override.yamlで設定する
+    volumes:
+      - butler-data:/app/data
+  web:
+    build:
+      context: .
+      target: web
+    command: npm run prod:web
+    environment:
+      NODE_ENV: "production"
+      # 必須の環境変数はcompose.override.yamlで設定する
+    volumes:
+      - butler-data:/app/data
+    ports:
+      - "3000:3000"
+
+volumes:
+  butler-data:

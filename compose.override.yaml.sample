@@ -1,0 +1,31 @@
+x-common-env: &common-env
+  # NOTE:
+  #   `NODE_ENV`はcompose.yaml側で設定されます。このファイルでは本番・開発ともに上書きしないでください。
+  #   ローカル開発でNODE_ENVを"development"にしたい場合は、別途compose.override.dev.yamlを作成して
+  #   そちらで下記のように設定してください。
+  #   例: NODE_ENV: "development"  # ← ローカル開発専用。compose.override.yamlには書かないこと。
+  NODE_ENV: "development"
+  DISCORD_TOKEN: "your-discord-token-here"
+  DISCORD_GUILD_ID: "your-discord-guild-id-here"
+  NOTIFY_TEXT_CHANNEL_ID: "your-notify-text-channel-id-here"
+  POMODORO_VOICE_CHANNEL_ID: "your-pomodoro-voice-channel-id-here"
+  DETECT_STICKER_RATE: "1.0"
+
+services:
+  worker:
+    command: npm run dev:worker # この行は本番運用ではnpm run prod:workerに変更する
+    environment:
+      <<: *common-env
+    volumes:
+      - butler-data:/app/data
+      - ./:/app
+  web:
+    command: npm run dev:web # この行は本番運用ではnpm run prod:webに変更する
+    environment:
+      <<: *common-env
+    volumes:
+      - butler-data:/app/data
+      - ./:/app
+
+volumes:
+  butler-data:
