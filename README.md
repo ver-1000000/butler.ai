@@ -1,23 +1,26 @@
 # バトラー
-Node.jsサーバーで動作させることを前提とした、TypeScript実装のDiscord Botです。
+Node.jsサーバーで動作させることを前提とした、TypeScript実装のDiscord Botです。 AI連携を前提とした設計になっています。
 
 GCP e2-micro / Oracle Always Free VMにデプロイすると無料枠で動かせてイイカンジです
 
 - https://github.com/ver-1000000/butler.git
 
 ## 機能
+- メンションでAIに相談し、必要に応じてスラッシュコマンドを自律実行
 - ボイスチャンネルが開始された際の通知
-- 特殊なコマンドの提供
-  - `/butler memo`コマンド - 発言のメモ
-    - タイトル/本文がセットになった文字列のCRUDを提供
-  - `/butler pomodoro`コマンド - ポモドーロタイマー機能
-    - 特定の音声チャンネルで、マイクのミュートを利用した擬似的なポモドーロタイマーを提供
-  - `/butler wiki`コマンド - [wikipedia](https://ja.wikipedia.org/)からの引用
-    - wikipediaから単語の概要を引用して発言・リンクする
-  - `/butler sticker`コマンド - チャットに反応するスタンプ機能
-    - 正規表現と対応する画像URLを登録し、チャットがマッチした際Botに発言させることで、スタンプ機能のように振る舞わせる
+- `/butler` スラッシュコマンド群
+  - `/butler memo`: 発言メモのCRUD
+  - `/butler pomodoro`: 擬似ポモドーロタイマー
+  - `/butler wiki`: Wikipediaの概要を引用して返答
+  - `/butler sticker`: 正規表現に反応するスタンプ登録/管理
 
 それぞれのコマンドの詳細については、実装をご覧いただくか、本Bot起動後、コマンドに引数を付けずに実行することで詳細なヘルプが表示されます。
+
+## AI連携
+AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemini`。
+
+- 対応プロバイダ: gemini / openai / claude / workersai
+- Workers AIは`AI_CLOUDFLARE_ACCOUNT_ID`が必要
 
 ## ファイル・ディレクトリ構成
 本プロジェクトは [npmのWorkspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces)を利用したモノリポ構成となっております。
@@ -86,6 +89,11 @@ Docker Desktopを使わない環境では、Docker ComposeとDocker Buildxをそ
 - `NOTIFY_TEXT_CHANNEL_ID`: 通知など、BOTが自発的に発言する際のテキストチャンネルID
 - `POMODORO_VOICE_CHANNEL_ID`: ポモドーロ機能で利用するボイスチャンネルのID
 - `DETECT_STICKER_RATE`: チャットがstickerの正規表現にマッチした際の反応率を、0.0-1.0で記述(0は無効化、1.0のときは必ず反応)
+- `AI_PROVIDER`: 利用するAIプロバイダ(gemini / openai / claude / workersai)
+- `AI_MODEL`: 利用するモデル名
+- `AI_API_KEY`: AIプロバイダのAPIキー
+- `AI_CLOUDFLARE_ACCOUNT_ID`: Workers AI利用時のみ必要なAccount ID
+- `AI_PROMPT_APPEND`: systemプロンプトへの追記
 
 ## その他
 ### IDの取得方法

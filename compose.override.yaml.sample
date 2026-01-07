@@ -10,6 +10,11 @@ x-common-env: &common-env
   NOTIFY_TEXT_CHANNEL_ID: "your-notify-text-channel-id-here"
   POMODORO_VOICE_CHANNEL_ID: "your-pomodoro-voice-channel-id-here"
   DETECT_STICKER_RATE: "1.0"
+  AI_PROVIDER: "gemini"
+  AI_MODEL: "gemini-2.5-flash"
+  AI_API_KEY: "your-api-key-here"
+  AI_CLOUDFLARE_ACCOUNT_ID: "your-cloudflare-account-id-here"
+  AI_PROMPT_APPEND: "語調はなるべく気さくな感じで、絵文字を適度に交えて、日本語で回答してください。"
 
 services:
   worker:

@@ -8,7 +8,9 @@ import { PomodoroService } from './services/pomodoro.service';
 import { InteractiveService } from './services/interactive.service';
 import { WikipediaService } from './services/wikipedia.service';
 import { StickerService } from './services/sticker.service';
-import { registerSlashCommands } from './commands/register-slash-commands';
+import { registerSlashCommands } from './commands/slash-commands';
+import { AiAgentService, AiConversationService } from './services/ai-agent.service';
+import { executeSlashCommandTool, getSlashCommandAiTools } from './commands/slash-command-tools';
 
 /** 起点となるメインのアプリケーションクラス。 */
 class App {
@@ -79,10 +81,17 @@ class App {
   const client      = new Client(clientOptions);
   const memosStore  = new MemosStore();
   const entityStore = new StickersStore();
+  const pomodoroService = new PomodoroService(client);
+  const toolContext = { memosStore, stickersStore: entityStore, pomodoroService };
+  const aiAgentService = new AiAgentService(
+    call => executeSlashCommandTool(call, toolContext),
+    getSlashCommandAiTools()
+  );
+  const aiConversationService = new AiConversationService();
   new NotifyVoiceChannelService(client).run();
   new MemoService(client, memosStore).run();
-  new PomodoroService(client).run();
-  new InteractiveService(client).run();
+  pomodoroService.run();
+  new InteractiveService(client, aiAgentService, aiConversationService).run();
   new WikipediaService(client).run();
   new StickerService(client, entityStore).run();
   new App(client).run();
