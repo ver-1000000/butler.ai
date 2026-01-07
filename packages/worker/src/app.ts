@@ -1,5 +1,5 @@
 import { ActivityType, Client, ClientUser, GatewayIntentBits, Partials, TextChannel } from 'discord.js';
-import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from '@butler/core';
+import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID, closeSqliteDb } from '@butler/core';
 import { MemosStore } from './stores/memos.store';
 import { StickersStore } from './stores/stickers.store';
 import { NotifyVoiceChannelService } from './services/notify-voice-channel.service';
@@ -57,6 +57,7 @@ class App {
       console.log(`shutdown - received ${signal}`);
       Promise.resolve()
         .then(() => this.client.destroy())
+        .then(() => closeSqliteDb())
         .catch(error => console.error('shutdown error', error))
         .finally(() => process.exit(0));
     };

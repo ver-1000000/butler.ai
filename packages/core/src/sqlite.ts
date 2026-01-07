@@ -37,12 +37,9 @@ export const getSqliteDb = (): SqliteDb => {
   return db;
 };
 
-(() => {
-  /** Appの終了処理でprocess.exit()が呼ばれたときにDBを閉じる。 */
-  const closeSqliteDb = () => {
-    if (db == null) return;
-    db.close();
-    db = null;
-  };
-  process.once('exit', closeSqliteDb);
-})();
+/** アプリケーション終了時に明示的にDBを閉じる。 */
+export const closeSqliteDb = () => {
+  if (db == null) return;
+  db.close();
+  db = null;
+};
