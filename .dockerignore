@@ -1,0 +1,10 @@
+*.tsbuildinfo
+.DS_Store
+.build-cache
+.idea
+.next
+.vscode
+Session.vim
+data
+dist
+node_modules

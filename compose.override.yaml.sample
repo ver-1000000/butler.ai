@@ -1,0 +1,26 @@
+x-common-env: &common-env
+  NODE_ENV: "development" # 本番運用では削除する
+  DISCORD_TOKEN: ""
+  DISCORD_GUILD_ID: ""
+  NOTIFY_TEXT_CHANNEL_ID: ""
+  POMODORO_VOICE_CHANNEL_ID: ""
+  DETECT_STICKER_RATE: "1.0"
+
+services:
+  worker:
+    command: npm run dev:worker # この行は本番運用ではnpm run prod:workerに変更する
+    environment:
+      <<: *common-env
+    volumes:
+      - butler-data:/app/data
+      - ./:/app
+  web:
+    command: npm run dev:web # この行は本番運用ではnpm run prod:webに変更する
+    environment:
+      <<: *common-env
+    volumes:
+      - butler-data:/app/data
+      - ./:/app
+
+volumes:
+  butler-data:

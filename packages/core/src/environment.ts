@@ -1,7 +1,4 @@
-import { config } from 'dotenv';
-config({ path: '../../.env' });
-
-/** `.env`ファイルから定数を読み取ってオブジェクトとして提供する環境変数。 */
+/** process.envから読み取った環境変数。 */
 export const {
   DISCORD_TOKEN,
   DISCORD_GUILD_ID,
