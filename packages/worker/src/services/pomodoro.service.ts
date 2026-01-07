@@ -66,6 +66,36 @@ export class PomodoroService {
   }
 
   /**
+   * AIツール経由でポモドーロを開始する。
+   */
+  public startFromTool(): string {
+    this.startPomodoro();
+    return this.startMessage();
+  }
+
+  /**
+   * AIツール経由でポモドーロを停止する。
+   */
+  public async stopFromTool(): Promise<string> {
+    await this.stopPomodoro();
+    return this.stopMessage();
+  }
+
+  /**
+   * AIツール経由で現在のステータスを取得する。
+   */
+  public statusFromTool(): string {
+    return this.prettyStatusText();
+  }
+
+  /**
+   * AIツール経由でヘルプを取得する。
+   */
+  public helpFromTool(): string {
+    return PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
+  }
+
+  /**
    * `voiceStateUpdate`イベントの`oldState`と`newState`の状態から、ポモドーロ用音声チャンネルの出入りを検知し、
    * ミュートの状態を適宜切り替える。
    * これにより、作業中に入退室したメンバーのミュート状態を最新に保つ。
