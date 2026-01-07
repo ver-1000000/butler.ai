@@ -51,31 +51,36 @@ GCP e2-micro / Oracle Always Free VMにデプロイすると無料枠で動か�
 7. 認証後、サーバー内にボットが参加していることを確認する
 8. 以降の起動手順に進む(環境変数の `DISCORD_TOKEN` が必要)
 
-## ローカルでの環境構築
-### 前提
-- 対象のDiscordサーバーにBOTがログインしている状態にしておくこと
-- `node.js`のいい感じの環境を整えておくこと
+## 開発・デプロイ
+開発・デプロイはDocker ComposeとDocker Buildxが有効になったDockerを利用します。
+
+最新のDocker Desktopにはデフォルトでバンドルされていますが、
+Docker Desktopを使わない環境では、Docker ComposeとDocker Buildxをそれぞれ自前でインストールする必要があります。
 
 ### 手順
-1. 本リポジトリをクローンし、`npm ci`を実行する
-2. プロジェクトのルートディレクトリにある`.env.sample`をコピーして`.env`を作成する
-3. `.env`ファイルを編集して環境変数を設定する
-4. `npm run dev`を行うと、開発用サーバーが立ち上がり、ファイルの変更検知込のビルド&サービングを行う
+1. 開発用に`compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成する
+2. `compose.override.yaml`の`environment`に環境変数を直書きする(このファイルはGit管理しない)
+3. `docker compose up -d --build`を実行する
+   - `-d` デタッチドモードで起動する。 コンソールにログを表示させたい場合は省略する
+   - `--build` イメージを再ビルドする。 オプションを付けると、Dockerfileの内容が変更された場合に再ビルドされる
+4. `http://localhost:3000`にアクセスしてwebが起動していることを確認する
 
-## [GCP e2-micro](https://console.cloud.google.com/compute/instancesAdd)へのデプロイ
+### [GCP e2-micro](https://console.cloud.google.com/compute/instancesAdd)へのデプロイ
 1. VMインスタンス(e2-micro)を作成し、必要であればVPCネットワークのファイアウォールルールでポート3000の上りパケットを許可する
-2. VM内でnode.js(22.x)とGitを整え、リポジトリをクローンする
-3. `.env.sample`をコピーして`.env`を作成し、環境変数を設定する
-4. `npm ci`して`npm run build`して`npm run start`するとwebサーバーとworkerサーバーが起動する
+2. VM内でDocker/Docker ComposeとGitを整え、リポジトリをクローンする
+3. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成し、環境変数を設定する
+4. `compose.override.yaml`の`command`を`npm run prod:worker`/`npm run prod:web`に変更する(または該当行を削除して`compose.yaml`のデフォルトを使う)
+5. `docker compose up -d --build`を実行する
    - メモリ1GBならSwap領域を設定しておくと安定する
 
-## [Oracle Always Free VM](https://cloud.oracle.com/compute/instances)へのデプロイ
+### [Oracle Always Free VM](https://cloud.oracle.com/compute/instances)へのデプロイ
 1. Always FreeのComputeインスタンスを作成し、必要であればセキュリティリストでポート3000の受信を許可する
-2. VM内でnode.js(22.x)とGitを整え、リポジトリをクローンする
-3. `.env.sample`をコピーして`.env`を作成し、環境変数を設定する
-4. `npm ci`して`npm run build`して`npm run start`するとwebサーバーとworkerサーバーが起動する
+2. VM内でDocker/Docker ComposeとGitを整え、リポジトリをクローンする
+3. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成し、環境変数を設定する
+4. `compose.override.yaml`の`command`を`npm run prod:worker`/`npm run prod:web`に変更する(または該当行を削除して`compose.yaml`のデフォルトを使う)
+5. `docker compose up -d --build`を実行する
 
-## 環境変数(.envファイル)の説明
+## 環境変数(compose.override.yamlのenvironment)の説明
 - `DISCORD_TOKEN`: Discord APIを利用するために必要なトークン
 - `DISCORD_GUILD_ID`: スラッシュコマンドをギルド限定で登録する場合のギルドID(未設定の場合はグローバル登録)
 - `NOTIFY_TEXT_CHANNEL_ID`: 通知など、BOTが自発的に発言する際のテキストチャンネルID
