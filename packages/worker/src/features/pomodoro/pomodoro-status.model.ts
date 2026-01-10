@@ -1,4 +1,4 @@
-import { ScheduledTask } from 'node-cron';
+import { type ScheduledTask } from 'node-cron';
 import { getSqliteDb } from '@butler/core';
 
 /** ポモドーロの現在の状態を表すモデル。 */

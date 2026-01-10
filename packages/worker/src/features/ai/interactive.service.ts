@@ -1,9 +1,10 @@
-import { Client, Message } from 'discord.js';
+import type { Client, Message } from 'discord.js';
 import type { AiMessage } from '@butler/core';
 
-import { AiAgentService, AiConversationService } from './ai-agent.service';
+import { AiAgentService } from './agent.service';
+import { AiConversationService } from './conversation.service';
 
-/** BOTがメンションを受けた取ったときの対話挙動を定義するサービスクラス。 */
+/** BOTがメンションを受け取ったときの対話挙動を定義するサービスクラス。 */
 export class InteractiveService {
   private readonly processingEmoji = '👀';
 
@@ -72,7 +73,7 @@ export class InteractiveService {
     const { sessionId, messages, messageIds } = await this.rehydrateSessionFromReply(message);
     if (!sessionId) { return; }
     this.aiConversationService.ensureSession(sessionId, messages, messageIds);
-    this.reply(message, sessionId, false);
+    await this.reply(message, sessionId, false);
   }
 
   /**

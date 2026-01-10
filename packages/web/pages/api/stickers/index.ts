@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { getSqliteDb } from '@butler/core';
-import { Sticker } from '@butler/worker/src/stores/stickers.store';
+import { Sticker } from '@butler/worker/src/features/sticker/sticker.store';
 
 const db = getSqliteDb();
 const selectStickersStmt = db.prepare('SELECT id, regexp FROM stickers ORDER BY id');

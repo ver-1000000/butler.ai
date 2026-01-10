@@ -1,16 +1,18 @@
 import { ActivityType, Client, ClientUser, GatewayIntentBits, Partials, TextChannel } from 'discord.js';
 import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from '@butler/core';
-import { MemosStore } from './stores/memos.store';
-import { StickersStore } from './stores/stickers.store';
-import { NotifyVoiceChannelService } from './services/notify-voice-channel.service';
-import { MemoService } from './services/memo.service';
-import { PomodoroService } from './services/pomodoro.service';
-import { InteractiveService } from './services/interactive.service';
-import { WikipediaService } from './services/wikipedia.service';
-import { StickerService } from './services/sticker.service';
-import { registerSlashCommands } from './commands/slash-commands';
-import { AiAgentService, AiConversationService } from './services/ai-agent.service';
-import { executeSlashCommandTool, getSlashCommandAiTools } from './commands/slash-command-tools';
+import { MemosStore } from './features/memo/memo.store';
+import { MemoService } from './features/memo/memo.service';
+import { StickersStore } from './features/sticker/sticker.store';
+import { StickerService } from './features/sticker/sticker.service';
+import { NotifyVoiceChannelService } from './features/notify/notify-voice-channel.service';
+import { PomodoroService } from './features/pomodoro/pomodoro.service';
+import { AiAgentService } from './features/ai/agent.service';
+import { AiConversationService } from './features/ai/conversation.service';
+import { InteractiveService } from './features/ai/interactive.service';
+import { WikipediaService } from './features/wiki/wiki.service';
+import { registerSlashCommands } from './features/commands/slash-commands';
+import type { SlashCommandToolContext } from './features/commands/slash-command-tools';
+import { executeSlashCommandTool, getSlashCommandAiTools } from './features/commands/slash-command-tools';
 
 /** 起点となるメインのアプリケーションクラス。 */
 class App {
@@ -67,8 +69,8 @@ class App {
   }
 }
 
-/** 依存を解決しつつアプリケーションを起動する。 */
-(() => {
+/** Discordクライアントを生成する。 */
+const createClient = (): Client => {
   const intents = [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -76,23 +78,49 @@ class App {
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent
   ];
-  /** Discordクライアントの起動設定 */
   const clientOptions = { intents, partials: [Partials.Message, Partials.Channel, Partials.Reaction] };
-  const client      = new Client(clientOptions);
-  const memosStore  = new MemosStore();
-  const entityStore = new StickersStore();
+  return new Client(clientOptions);
+};
+
+/** 起動に必要な依存関係を生成する。 */
+const createDependencies = (client: Client) => {
+  const memosStore = new MemosStore();
+  const stickersStore = new StickersStore();
   const pomodoroService = new PomodoroService(client);
-  const toolContext = { memosStore, stickersStore: entityStore, pomodoroService };
+  const toolContext: SlashCommandToolContext = { memosStore, stickersStore, pomodoroService };
   const aiAgentService = new AiAgentService(
     call => executeSlashCommandTool(call, toolContext),
     getSlashCommandAiTools()
   );
   const aiConversationService = new AiConversationService();
+  return {
+    memosStore,
+    stickersStore,
+    pomodoroService,
+    aiAgentService,
+    aiConversationService
+  };
+};
+
+/** Featureサービスを起動する。 */
+const runFeatureServices = (
+  client: Client,
+  deps: ReturnType<typeof createDependencies>
+) => {
   new NotifyVoiceChannelService(client).run();
-  new MemoService(client, memosStore).run();
-  pomodoroService.run();
-  new InteractiveService(client, aiAgentService, aiConversationService).run();
+  new MemoService(client, deps.memosStore).run();
+  deps.pomodoroService.run();
+  new InteractiveService(client, deps.aiAgentService, deps.aiConversationService).run();
   new WikipediaService(client).run();
-  new StickerService(client, entityStore).run();
-  new App(client).run();
-})();
+  new StickerService(client, deps.stickersStore).run();
+};
+
+/** 依存を解決しつつアプリケーションを起動する。 */
+const bootstrap = () => {
+  const client = createClient();
+  const deps = createDependencies(client);
+  runFeatureServices(client, deps);
+  return new App(client);
+};
+
+bootstrap().run();

@@ -1,11 +1,27 @@
-import { ActivityType, type ChatInputCommandInteraction, MessageReaction, Client, Message, User, VoiceChannel, VoiceState, TextChannel } from 'discord.js';
-import { AudioPlayerStatus, createAudioPlayer, createAudioResource, DiscordGatewayAdapterCreator, joinVoiceChannel } from '@discordjs/voice';
+import {
+  ActivityType,
+  type ChatInputCommandInteraction,
+  Client,
+  Message,
+  MessageReaction,
+  TextChannel,
+  User,
+  VoiceChannel,
+  VoiceState
+} from 'discord.js';
+import {
+  AudioPlayerStatus,
+  createAudioPlayer,
+  createAudioResource,
+  DiscordGatewayAdapterCreator,
+  joinVoiceChannel
+} from '@discordjs/voice';
 import { schedule } from 'node-cron';
-
 import { NOTIFY_TEXT_CHANNEL_ID, POMODORO_VOICE_CHANNEL_ID } from '@butler/core';
-import { PrettyText } from '../utils/pretty-text.util';
-import { PomodoroStatus } from '../models/pomodoro-status.model';
-import { sendToChannel } from '../utils/discord.util';
+
+import { PrettyText } from '../../utils/pretty-text.util';
+import { PomodoroStatus } from './pomodoro-status.model';
+import { sendToChannel } from '../../utils/discord.util';
 
 /** デバッグモードフラグ。 */
 const DEBUG = false;
@@ -15,7 +31,7 @@ const POMODORO_DURATION = DEBUG ? 2 : 30;
 const POMODORO_WORK_DURATION = DEBUG ? 1 : 25;
 
 /** `GenerateText.help`に食わせるヘルプ文の定数。 */
-const HELP = {
+export const POMODORO_HELP = {
   DESC: [
     '`/butler pomodoro` コマンド - 音声チャンネルを利用した**ポモドーロタイマー**機能',
     '(**ポモドーロタイマー用音声チャンネルに参加した状態**で、以下のコマンドを利用)'
@@ -35,7 +51,8 @@ export class PomodoroService {
 
   /** ポモドーロ用音声チャンネルの取得。 */
   private get voiceChannel() {
-    return this.client.channels.cache.get(POMODORO_VOICE_CHANNEL_ID || '') as VoiceChannel | undefined;
+    const channelId = POMODORO_VOICE_CHANNEL_ID || '';
+    return this.client.channels.cache.get(channelId) as VoiceChannel | undefined;
   }
 
   constructor(private client: Client) {}
@@ -92,7 +109,7 @@ export class PomodoroService {
    * AIツール経由でヘルプを取得する。
    */
   public helpFromTool(): string {
-    return PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
+    return PrettyText.helpList(POMODORO_HELP.DESC, ...POMODORO_HELP.ITEMS);
   }
 
   /**
@@ -149,7 +166,7 @@ export class PomodoroService {
 
   /** ヘルプを発言通知する。 */
   private async help(interaction: ChatInputCommandInteraction) {
-    const text    = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
+    const text    = PrettyText.helpList(POMODORO_HELP.DESC, ...POMODORO_HELP.ITEMS);
     const message = await interaction.reply({ content: text, fetchReply: true }) as Message;
     this.commandsEmoji(message);
   }
@@ -219,48 +236,42 @@ export class PomodoroService {
 
   /** ポモドーロの作業時間終了を行う関数。 */
   private async doRest() {
-    this.status.rest = true;
+    this.status.rest  = true;
     await this.setMute(false);
     await this.playSound('src/assets/begin-rest.ogg');
   }
 
-  /** `input`のパスにある音声ファイルを再生する。 */
-  private async playSound(input: string) {
-    if (this.voiceChannel == null) { return; }
-    const connection   = joinVoiceChannel({
-      channelId: this.voiceChannel.id,
-      guildId: this.voiceChannel.guildId,
-      adapterCreator: this.voiceChannel.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator
-    });
-    this.player.play(createAudioResource(input));
-    connection.subscribe(this.player);
-    const promise = new Promise(resolve => this.player.on(AudioPlayerStatus.Idle, () => resolve(null))).then(async result => {
-      if (DEBUG) {
-        const channel = await this.client.channels.fetch(NOTIFY_TEXT_CHANNEL_ID || '');
-        if (channel && 'send' in channel) {
-          await channel.send(this.prettyStatusText());
-        }
-      }
-      return result;
-    });
-    return promise;
+  /** ボイスチャンネル参加時に全員ミュート/解除する。 */
+  private async setMute(mute: boolean) {
+    const vc = this.voiceChannel;
+    const members = vc?.members.map(member => member);
+    await Promise.all((members || []).map(async member => await member.voice.setMute(mute)));
   }
 
-  /** 現在のポモドーロ状態を整形した文字列を返す。 */
+  /** ポモドーロ作業状況を返す。 */
   private prettyStatusText() {
-    const date = this.status.startAt?.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-    return `
-    **タイマー開始日時: **_${date ? date + ' :timer:' : '停止中:sleeping:'}_
-    **ポモドーロタイマー: **_${this.status.wave} 回目 ${this.status.spent % POMODORO_DURATION} 分経過_
-    **ポモドーロの状態: **_${this.status.startAt ? this.status.rest ? '休憩中:island:' : '作業中:fire:' : '停止中:sleeping:'}_
-    `.replace(/\n\s*/g, '\n');
+    const date = this.status.startAt;
+    const start = date ? `${date.getHours()}時${date.getMinutes()}分` : '--時--分';
+    const elapsed = this.status.spent;
+    const wave = this.status.wave;
+    const info = `:tomato: **${wave}回目 / ${elapsed}分経過 / ${this.status.rest ? '休憩' : '作業'}中**`;
+    return `${info}\n:clock1: ポモドーロ開始時刻: ${start}`;
   }
 
-  /**
-   * `this.voiceChannel`のミュート状態を変更する。
-   * - `member.voice.connection`を確認することで、Promiseの解決中に離脱したユーザーをミュートして例外が発生するのを防ぐ
-   */
-  private setMute(mute: boolean) {
-    return Promise.all(this.voiceChannel?.members.map(member => member.voice.channel ? member.voice.setMute(mute) : member) || []);
+  /** 指定された音声を再生する。 */
+  private async playSound(path: string) {
+    const vc = this.voiceChannel;
+    if (!vc || vc.members.size === 0) { return; }
+    const connection = joinVoiceChannel({
+      channelId: vc.id,
+      guildId: vc.guild.id,
+      adapterCreator: vc.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
+      selfMute: false,
+      selfDeaf: true
+    });
+    const resource = createAudioResource(path);
+    connection.subscribe(this.player);
+    this.player.play(resource);
+    this.player.once(AudioPlayerStatus.Idle, () => connection.destroy());
   }
 }

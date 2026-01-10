@@ -1,5 +1,5 @@
 import { getSqliteDb } from '@butler/core';
-import { PrettyText } from '../utils/pretty-text.util';
+import { PrettyText } from '../../utils/pretty-text.util';
 
 /** ストアにアクセスした結果を使いやすくするためにラップする型。 */
 interface StoreResult<T = string | Record<string, string>> {
@@ -23,7 +23,9 @@ export class StickersStore {
   private db = getSqliteDb();
   private statementData = this.db.prepare('SELECT id, regexp FROM stickers ORDER BY id');
   private statementGet = this.db.prepare('SELECT id, regexp FROM stickers WHERE id = ?');
-  private statementSet = this.db.prepare('INSERT INTO stickers (id, regexp) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET regexp = excluded.regexp');
+  private statementSet = this.db.prepare(
+    'INSERT INTO stickers (id, regexp) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET regexp = excluded.regexp'
+  );
   private statementDel = this.db.prepare('DELETE FROM stickers WHERE id = ?');
 
   /** 設定されている値をすべて取得する。 */
@@ -53,7 +55,9 @@ export class StickersStore {
   /** データストアから値を削除する。 */
   del(key: string): StoreResult<Sticker | null> {
     const value  = this.get(key).value;
-    const pretty = value == null ? `**${key}** は設定されていません:cry:` : `**${key}** を削除しました:wave:${value ? '\n' + PrettyText.code(value.regexp) : ''}`;
+    const pretty = value == null
+      ? `**${key}** は設定されていません:cry:`
+      : `**${key}** を削除しました:wave:${value ? '\n' + PrettyText.code(value.regexp) : ''}`;
     if (value != null) { this.statementDel.run(key); }
     return { pretty, key, value };
   }

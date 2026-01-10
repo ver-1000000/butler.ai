@@ -10,7 +10,9 @@ export class PrettyText {
    */
   static helpList = (desc: string, ...items: Readonly<[string, string]>[]) => {
     const padEndCount = Math.max(...items.map(([key, _]) => key.length));
-    const body        = items.map(([key, value]) => `_**\`${key.padEnd(padEndCount)}\`**_ - ${value}`).join('\n');
+    const body = items
+      .map(([key, value]) => `_**\`${key.padEnd(padEndCount)}\`**_ - ${value}`)
+      .join('\n');
     return desc + '\n\n' + body;
   }
   /**
@@ -20,7 +22,12 @@ export class PrettyText {
    * @param ...items[1] 箇条書き項目の説明(マークダウン)
    */
   static markdownList = (desc: string, ...items: [string, string][]) => {
-    const body = items.map(([key, value]) => `# **${key}**${value ? '\n' + PrettyText.code(value, 'md') : '\n'}`).join('\n');
+    const body = items
+      .map(([key, value]) => {
+        const detail = value ? `\n${PrettyText.code(value, 'md')}` : '\n';
+        return `# **${key}**${detail}`;
+      })
+      .join('\n');
     return desc ? desc + '\n\n' + body : body;
   }
 }

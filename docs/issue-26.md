@@ -50,10 +50,8 @@
     - ai-provider.ts (types + interface + factory を統合)
     - ai-gemini.provider.ts / ai-workersai.provider.ts / ai-openai.provider.ts / ai-claude.provider.ts
     - tools/* (スラッシュコマンドをツール宣言として集約)
-  - packages/worker/src/services/
-    - ai-agent.service.ts / interactive.service.ts
-  - packages/worker/src/commands/
-    - slash-command-tools.ts
+  - packages/worker/src/features/
+    - ai/* / commands/* / memo/* / pomodoro/* / sticker/* / wiki/* / notify/* (featureごとにservice/store/modelへ分割)
 
 # 実装状況(2026-01-07)
 - Gemini/OpenAI/Claude/Workers AIの最小連携を実装済み(応答が返るところまで)
@@ -61,6 +59,9 @@
 - ai-provider.ts に types/interface/factory を統合(階層をフラット化)
 - Gemini 503/429/500に対する指数バックオフを実装
 - systemプロンプトを簡素化し、ツール利用の方針のみ記述
+- worker配下の機能をfeaturesディレクトリに集約(階層を浅く整理)
+- slash-command-toolsの分岐をハンドラMapで整理
+- AIプロバイダのリトライ方針を統一
 - メンション時はリプライで返し、会話コンテキストはハイブリッドで保持
   - 最大5セッションをLRUで保持
   - セッション内は最大20件
