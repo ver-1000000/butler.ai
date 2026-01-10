@@ -11,7 +11,13 @@ type ClaudeMessage = {
 };
 
 type ClaudeResponse = {
-  content?: Array<{ type: 'text' | 'tool_use'; text?: string; id?: string; name?: string; input?: Record<string, unknown> }>;
+  content?: Array<{
+    type: 'text' | 'tool_use';
+    text?: string;
+    id?: string;
+    name?: string;
+    input?: Record<string, unknown>;
+  }>;
   stop_reason?: string;
 };
 
@@ -32,27 +38,14 @@ export class ClaudeProvider implements AiProvider {
     const messages = this.toClaudeMessages(request.messages);
     const tools = request.tools ? this.toClaudeTools(request.tools) : undefined;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: 1024,
-        system,
-        messages,
-        tools,
-        tool_choice: tools?.length ? 'auto' : undefined
-      })
+    const res = await this.requestWithRetry(url, {
+      model: this.model,
+      max_tokens: 1024,
+      system,
+      messages,
+      tools,
+      tool_choice: tools?.length ? 'auto' : undefined
     });
-
-    if (!res.ok) {
-      const errorBody = await res.text();
-      throw new Error(`ClaudeError:${res.status} ${errorBody}`);
-    }
 
     const data = (await res.json()) as ClaudeResponse;
     const blocks = data.content ?? [];
@@ -145,11 +138,72 @@ export class ClaudeProvider implements AiProvider {
    * AIツール定義をClaude向けのtoolsに変換する。
    * @param tools AIツール定義
    */
-  private toClaudeTools(tools: AiToolDefinition[]): Array<{ name: string; description: string; input_schema: AiToolDefinition['parameters'] }> {
+  private toClaudeTools(
+    tools: AiToolDefinition[]
+  ): Array<{ name: string; description: string; input_schema: AiToolDefinition['parameters'] }> {
     return tools.map(tool => ({
       name: tool.name,
       description: tool.description,
       input_schema: tool.parameters
     }));
+  }
+
+  /**
+   * Claudeへのリクエストを指数バックオフでリトライする。
+   * @param url リクエストURL
+   * @param body 送信するボディ
+   */
+  private async requestWithRetry(url: string, body: Record<string, unknown>): Promise<Response> {
+    const maxRetries = 3;
+    const baseDelayMs = 500;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (res.ok) {
+          return res;
+        }
+
+        if (this.shouldRetry(res.status) && attempt < maxRetries) {
+          await this.sleep(baseDelayMs * 2 ** attempt);
+          continue;
+        }
+
+        const errorBody = await res.text();
+        throw new Error(`ClaudeError:${res.status} ${errorBody}`);
+      } catch (error) {
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+        await this.sleep(baseDelayMs * 2 ** attempt);
+      }
+    }
+
+    throw new Error('ClaudeError:RetryFailed');
+  }
+
+  /**
+   * リトライ対象のHTTPステータスか判定する。
+   * @param status HTTPステータスコード
+   */
+  private shouldRetry(status: number): boolean {
+    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+  }
+
+  /**
+   * 指定時間待機する。
+   * @param ms 待機時間(ms)
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

@@ -1,9 +1,13 @@
 import type { AiToolCall, AiToolDefinition } from '@butler/core';
-import { PrettyText } from '../utils/pretty-text.util';
-import type { MemosStore } from '../stores/memos.store';
-import type { StickersStore } from '../stores/stickers.store';
-import { dynamicFetch } from '../utils/fetch.util';
-import type { PomodoroService } from '../services/pomodoro.service';
+
+import { PrettyText } from '../../utils/pretty-text.util';
+import { dynamicFetch } from '../../utils/fetch.util';
+import { MEMO_HELP } from '../memo/memo.service';
+import { STICKER_HELP, validateStickerRegexp } from '../sticker/sticker.service';
+import { WIKI_HELP } from '../wiki/wiki.service';
+import type { MemosStore } from '../memo/memo.store';
+import type { StickersStore } from '../sticker/sticker.store';
+import type { PomodoroService } from '../pomodoro/pomodoro.service';
 
 /** スラッシュコマンドの引数定義。 */
 export type SlashCommandToolArgument = {
@@ -30,46 +34,11 @@ export type SlashCommandToolContext = {
   pomodoroService: PomodoroService;
 };
 
-const HELP = {
-  memo: {
-    DESC: '`/butler memo` コマンド - タイトルと本文のセットからなるメモを 登録/読取り/更新/削除 する機能',
-    ITEMS: [
-      ['/butler memo get key:hoge', '`"hoge"`の値を取得します'],
-      ['/butler memo set key:hoge value:foo', '`"hoge"` に値として `"foo"` を設定します(値はマークダウンや改行が可能)'],
-      ['/butler memo remove key:hoge', '設定済の `"hoge"` の値を削除します'],
-      ['/butler memo list', 'メモされた値をすべて表示します'],
-      ['/butler memo help', '`/butler memo` コマンドのヘルプを表示します']
-    ]
-  },
-  pomodoro: {
-    DESC: [
-      '`/butler pomodoro` コマンド - 音声チャンネルを利用した**ポモドーロタイマー**機能',
-      '(**ポモドーロタイマー用音声チャンネルに参加した状態**で、以下のコマンドを利用)'
-    ].join('\n'),
-    ITEMS: [
-      ['/butler pomodoro start', 'ポモドーロタイマーを開始(リセット)します'],
-      ['/butler pomodoro stop', 'ポモドーロタイマーを終了します'],
-      ['/butler pomodoro status', '現在のポモドーロステータスを表示します'],
-      ['/butler pomodoro help', '`/butler pomodoro` コマンドのヘルプを表示します']
-    ]
-  },
-  wiki: {
-    DESC: '`/butler wiki` コマンド - 指定した言葉の概要を、Wikipediaから引用して表示する機能',
-    ITEMS: [
-      ['/butler wiki summary word:hoge', 'Wikipediaから`"hoge"`のサマリーを取得し、引用します'],
-      ['/butler wiki help', '`/butler wiki` コマンドのヘルプを表示します']
-    ]
-  },
-  sticker: {
-    DESC: '`/butler sticker` コマンド - チャットを監視して、正規表現にマッチしたスタンプ画像を表示する機能',
-    ITEMS: [
-      ['/butler sticker set url:http://example.com/hoge.jpg regexp:/abc/', '`http://example.com/hoge.jpg` に正規表現 `/abc/` を設定(新規追加/上書き)します'],
-      ['/butler sticker remove url:http://example.com/hoge.jpg', '`http://example.com/hoge.jpg` が設定されていれば削除します'],
-      ['/butler sticker list', '登録されている値を一覧します'],
-      ['/butler sticker help', '`/butler sticker` コマンドのヘルプを表示します']
-    ]
-  }
-} as const;
+/** AIツールの実行関数。 */
+type ToolHandler = (
+  args: Record<string, unknown>,
+  context: SlashCommandToolContext
+) => Promise<string> | string;
 
 /**
  * 現時点でAIに公開するスラッシュコマンドのツール一覧を返す。
@@ -177,13 +146,81 @@ export const getSlashCommandAiTools = (): AiToolDefinition[] => {
     description: tool.description,
     parameters: {
       type: 'object',
-      properties: tool.arguments.reduce<Record<string, { type: 'string'; description?: string }>>((acc, arg) => {
-        acc[arg.name] = { type: 'string', description: arg.description };
-        return acc;
-      }, {}),
+      properties: tool.arguments.reduce<Record<string, { type: 'string'; description?: string }>>(
+        (acc, arg) => {
+          acc[arg.name] = { type: 'string', description: arg.description };
+          return acc;
+        },
+        {}
+      ),
       required: tool.arguments.filter(arg => arg.required).map(arg => arg.name)
     }
   }));
+};
+
+/** 引数を文字列として取得する。 */
+const toStringArg = (args: Record<string, unknown>, key: string): string => {
+  return String(args[key] ?? '');
+};
+
+/** AIツールの実行処理を定義する。 */
+const TOOL_HANDLERS: Record<string, ToolHandler> = {
+  'butler.memo.get': (args, context) => {
+    const key = toStringArg(args, 'key');
+    return context.memosStore.get(key).pretty;
+  },
+  'butler.memo.set': (args, context) => {
+    const key = toStringArg(args, 'key');
+    const value = toStringArg(args, 'value');
+    return context.memosStore.set(key, value).pretty;
+  },
+  'butler.memo.remove': (args, context) => {
+    const key = toStringArg(args, 'key');
+    return context.memosStore.del(key).pretty;
+  },
+  'butler.memo.list': (_, context) => {
+    return context.memosStore.data().pretty;
+  },
+  'butler.memo.help': () => {
+    return PrettyText.helpList(MEMO_HELP.DESC, ...MEMO_HELP.ITEMS);
+  },
+  'butler.pomodoro.start': (_, context) => {
+    return context.pomodoroService.startFromTool();
+  },
+  'butler.pomodoro.stop': async (_, context) => {
+    return context.pomodoroService.stopFromTool();
+  },
+  'butler.pomodoro.status': (_, context) => {
+    return context.pomodoroService.statusFromTool();
+  },
+  'butler.pomodoro.help': (_, context) => {
+    return context.pomodoroService.helpFromTool();
+  },
+  'butler.wiki.summary': (args) => {
+    const word = toStringArg(args, 'word');
+    return fetchWikipediaSummary(word);
+  },
+  'butler.wiki.help': () => {
+    return PrettyText.helpList(WIKI_HELP.DESC, ...WIKI_HELP.ITEMS);
+  },
+  'butler.sticker.set': (args, context) => {
+    const url = toStringArg(args, 'url');
+    const validation = validateStickerRegexp(toStringArg(args, 'regexp'));
+    if (!validation.ok) {
+      return validation.error;
+    }
+    return context.stickersStore.set(url, validation.value).pretty;
+  },
+  'butler.sticker.remove': (args, context) => {
+    const url = toStringArg(args, 'url');
+    return context.stickersStore.del(url).pretty;
+  },
+  'butler.sticker.list': (_, context) => {
+    return context.stickersStore.data().pretty;
+  },
+  'butler.sticker.help': () => {
+    return PrettyText.helpList(STICKER_HELP.DESC, ...STICKER_HELP.ITEMS);
+  }
 };
 
 /**
@@ -195,63 +232,11 @@ export const executeSlashCommandTool = async (
   call: AiToolCall,
   context: SlashCommandToolContext
 ): Promise<string> => {
-  const args = call.arguments ?? {};
-
-  if (call.name === 'butler.memo.get') {
-    const key = String(args.key ?? '');
-    return (await context.memosStore.get(key)).pretty;
+  const handler = TOOL_HANDLERS[call.name];
+  if (!handler) {
+    return `未対応のコマンドです: ${call.name}`;
   }
-  if (call.name === 'butler.memo.set') {
-    const key = String(args.key ?? '');
-    const value = String(args.value ?? '');
-    return (await context.memosStore.set(key, value)).pretty;
-  }
-  if (call.name === 'butler.memo.remove') {
-    const key = String(args.key ?? '');
-    return (await context.memosStore.del(key)).pretty;
-  }
-  if (call.name === 'butler.memo.list') {
-    return (await context.memosStore.data()).pretty;
-  }
-  if (call.name === 'butler.memo.help') {
-    return PrettyText.helpList(HELP.memo.DESC, ...HELP.memo.ITEMS);
-  }
-  if (call.name === 'butler.pomodoro.start') {
-    return context.pomodoroService.startFromTool();
-  }
-  if (call.name === 'butler.pomodoro.stop') {
-    return context.pomodoroService.stopFromTool();
-  }
-  if (call.name === 'butler.pomodoro.status') {
-    return context.pomodoroService.statusFromTool();
-  }
-  if (call.name === 'butler.pomodoro.help') {
-    return context.pomodoroService.helpFromTool();
-  }
-  if (call.name === 'butler.wiki.summary') {
-    const word = String(args.word ?? '');
-    return fetchWikipediaSummary(word);
-  }
-  if (call.name === 'butler.wiki.help') {
-    return PrettyText.helpList(HELP.wiki.DESC, ...HELP.wiki.ITEMS);
-  }
-  if (call.name === 'butler.sticker.set') {
-    const url = String(args.url ?? '');
-    const regexp = String(args.regexp ?? '').replace(/^\/+|\/+$/g, '');
-    return (await context.stickersStore.set(url, regexp)).pretty;
-  }
-  if (call.name === 'butler.sticker.remove') {
-    const url = String(args.url ?? '');
-    return (await context.stickersStore.del(url)).pretty;
-  }
-  if (call.name === 'butler.sticker.list') {
-    return (await context.stickersStore.data()).pretty;
-  }
-  if (call.name === 'butler.sticker.help') {
-    return PrettyText.helpList(HELP.sticker.DESC, ...HELP.sticker.ITEMS);
-  }
-
-  return `未対応のコマンドです: ${call.name}`;
+  return await handler(call.arguments ?? {}, context);
 };
 
 /**

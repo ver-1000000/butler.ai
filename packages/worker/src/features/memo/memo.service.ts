@@ -1,10 +1,10 @@
 import { type ChatInputCommandInteraction, Client } from 'discord.js';
 
-import { PrettyText } from '../utils/pretty-text.util';
-import { MemosStore } from '../stores/memos.store';
+import { PrettyText } from '../../utils/pretty-text.util';
+import { MemosStore } from './memo.store';
 
 /** `GenerateText.help`に食わせるヘルプ文の定数。 */
-const HELP = {
+export const MEMO_HELP = {
   DESC: '`/butler memo` コマンド - タイトルと本文のセットからなるメモを 登録/読取り/更新/削除 する機能',
   ITEMS: [
     ['/butler memo get key:hoge', '`"hoge"`の値を取得します'],
@@ -68,13 +68,16 @@ export class MemoService {
     if (pretty.length < 2000) {
       await interaction.reply(pretty);
     } else {
-      await interaction.reply({ content: '**MEMO 一覧**', files: [{ name: 'MEMO.md', attachment: Buffer.from(pretty) }] });
+      await interaction.reply({
+        content: '**MEMO 一覧**',
+        files: [{ name: 'MEMO.md', attachment: Buffer.from(pretty) }]
+      });
     }
   }
 
   /** ヘルプを表示する。 */
   private help(interaction: ChatInputCommandInteraction) {
-    const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
+    const text = PrettyText.helpList(MEMO_HELP.DESC, ...MEMO_HELP.ITEMS);
     return interaction.reply(text);
   }
 }

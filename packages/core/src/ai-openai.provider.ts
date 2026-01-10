@@ -1,4 +1,11 @@
-import type { AiGenerateRequest, AiGenerateResponse, AiMessage, AiToolCall, AiToolDefinition, AiProvider } from './ai-provider';
+import type {
+  AiGenerateRequest,
+  AiGenerateResponse,
+  AiMessage,
+  AiToolCall,
+  AiToolDefinition,
+  AiProvider
+} from './ai-provider';
 
 type OpenAiToolCall = {
   id: string;
@@ -42,24 +49,12 @@ export class OpenAiProvider implements AiProvider {
 
     const tools = request.tools ? this.toOpenAiTools(request.tools) : undefined;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        tools,
-        tool_choice: tools?.length ? 'auto' : undefined
-      })
+    const res = await this.requestWithRetry(url, {
+      model: this.model,
+      messages,
+      tools,
+      tool_choice: tools?.length ? 'auto' : undefined
     });
-
-    if (!res.ok) {
-      const errorBody = await res.text();
-      throw new Error(`OpenAIError:${res.status} ${errorBody}`);
-    }
 
     const data = (await res.json()) as OpenAiResponse;
     const message = data.choices?.[0]?.message;
@@ -143,5 +138,63 @@ export class OpenAiProvider implements AiProvider {
     } catch {
       return {};
     }
+  }
+
+  /**
+   * OpenAIへのリクエストを指数バックオフでリトライする。
+   * @param url リクエストURL
+   * @param body 送信するボディ
+   */
+  private async requestWithRetry(url: string, body: Record<string, unknown>): Promise<Response> {
+    const maxRetries = 3;
+    const baseDelayMs = 500;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (res.ok) {
+          return res;
+        }
+
+        if (this.shouldRetry(res.status) && attempt < maxRetries) {
+          await this.sleep(baseDelayMs * 2 ** attempt);
+          continue;
+        }
+
+        const errorBody = await res.text();
+        throw new Error(`OpenAIError:${res.status} ${errorBody}`);
+      } catch (error) {
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+        await this.sleep(baseDelayMs * 2 ** attempt);
+      }
+    }
+
+    throw new Error('OpenAIError:RetryFailed');
+  }
+
+  /**
+   * リトライ対象のHTTPステータスか判定する。
+   * @param status HTTPステータスコード
+   */
+  private shouldRetry(status: number): boolean {
+    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+  }
+
+  /**
+   * 指定時間待機する。
+   * @param ms 待機時間(ms)
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

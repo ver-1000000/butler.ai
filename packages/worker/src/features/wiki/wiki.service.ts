@@ -1,9 +1,10 @@
 import { type ChatInputCommandInteraction, Client } from 'discord.js';
-import { PrettyText } from '../utils/pretty-text.util';
-import { dynamicFetch } from '../utils/fetch.util';
+
+import { PrettyText } from '../../utils/pretty-text.util';
+import { dynamicFetch } from '../../utils/fetch.util';
 
 /** `GenerateText.help`に食わせるヘルプ文の定数。 */
-const HELP = {
+export const WIKI_HELP = {
   DESC: '`/butler wiki` コマンド - 指定した言葉の概要を、Wikipediaから引用して表示する機能',
   ITEMS: [
     ['/butler wiki summary word:hoge', 'Wikipediaから`"hoge"`のサマリーを取得し、引用します'],
@@ -56,10 +57,17 @@ export class WikipediaService {
       const HOST    = 'https://ja.wikipedia.org/';
       const QUERY   = 'w/api.php?format=json&action=query&prop=extracts&exintro&explaintext&redirects=1&titles=';
       const word    = interaction.options.getString('word', true);
-      const res     = await (await dynamicFetch(`${HOST}${QUERY}${encodeURIComponent(word)}`)).json() as WikipediaResponce;
-      const pages   = Object.values(res.query.pages);
-      const items   = pages.reduce((a: [string, string][], b) => b.extract ? [...a, [b.title, b.extract] as [string, string]] : a, []);
-      const success = () => PrettyText.markdownList(`<${HOST}?curid=${pages[0].pageid}> \`[${word}]\``, ...items);
+      const response = await dynamicFetch(`${HOST}${QUERY}${encodeURIComponent(word)}`);
+      const res = (await response.json()) as WikipediaResponce;
+      const pages = Object.values(res.query.pages);
+      const items: [string, string][] = [];
+      for (const page of pages) {
+        if (page.extract) {
+          items.push([page.title, page.extract]);
+        }
+      }
+      const success = () =>
+        PrettyText.markdownList(`<${HOST}?curid=${pages[0].pageid}> \`[${word}]\``, ...items);
       const fail    = () => `\`${word}\` はWikipediaで検索できませんでした:smiling_face_with_tear:`;
       const text    = items.length ? success() : fail();
       await interaction.reply(text);
@@ -75,7 +83,7 @@ export class WikipediaService {
 
   /** ヘルプを表示する。 */
   private help(interaction: ChatInputCommandInteraction) {
-    const text = PrettyText.helpList(HELP.DESC, ...HELP.ITEMS);
+    const text = PrettyText.helpList(WIKI_HELP.DESC, ...WIKI_HELP.ITEMS);
     return interaction.reply(text);
   }
 }

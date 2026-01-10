@@ -1,7 +1,11 @@
 import type { AiProvider } from './ai-provider';
 import type { AiGenerateRequest, AiGenerateResponse, AiMessage, AiToolDefinition } from './ai-provider';
 
-type GeminiPart = { text?: string; functionCall?: { name: string; args?: Record<string, unknown> }; functionResponse?: { name: string; response: Record<string, unknown> } };
+type GeminiPart = {
+  text?: string;
+  functionCall?: { name: string; args?: Record<string, unknown> };
+  functionResponse?: { name: string; response: Record<string, unknown> };
+};
 type GeminiContent = { role: 'user' | 'model' | 'tool'; parts: GeminiPart[] };
 
 type GeminiToolDeclaration = {
@@ -32,7 +36,10 @@ export class GeminiProvider implements AiProvider {
    * @param request 生成リクエスト
    */
   async generate(request: AiGenerateRequest): Promise<AiGenerateResponse> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+    const url = [
+      'https://generativelanguage.googleapis.com/v1beta/models/',
+      `${this.model}:generateContent?key=${this.apiKey}`
+    ].join('');
 
     const contents = request.messages.map(message => this.toGeminiContent(message));
     const tools = request.tools ? this.toGeminiTools(request.tools) : undefined;
@@ -72,7 +79,10 @@ export class GeminiProvider implements AiProvider {
 
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
       try {
-        const body: { contents: GeminiContent[]; tools?: { functionDeclarations: GeminiToolDeclaration[] }[] } = { contents };
+        const body: {
+          contents: GeminiContent[];
+          tools?: { functionDeclarations: GeminiToolDeclaration[] }[];
+        } = { contents };
         if (tools?.length) { body.tools = tools; }
 
         const res = await fetch(url, {
@@ -149,7 +159,7 @@ export class GeminiProvider implements AiProvider {
    * @param status HTTPステータスコード
    */
   private shouldRetry(status: number): boolean {
-    return status === 429 || status === 500 || status === 503;
+    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
   }
 
   /**

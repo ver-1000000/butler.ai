@@ -1,7 +1,7 @@
 import { Client, SlashCommandBuilder } from 'discord.js';
-
 import { DISCORD_GUILD_ID } from '@butler/core';
 
+/** Discordへ登録するスラッシュコマンド定義。 */
 export const SLASH_COMMANDS = [
   new SlashCommandBuilder()
     .setName('butler')
