@@ -22,6 +22,9 @@ COPY packages/web/package.json packages/web/package.json
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
+# 開発用イメージ(依存関係のみ)
+FROM deps AS dev
+
 # ビルド成果物の作成
 FROM deps AS build
 COPY . .

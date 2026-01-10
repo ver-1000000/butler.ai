@@ -1,8 +1,6 @@
 services:
   worker:
-    build:
-      context: .
-      target: worker
+    image: ghcr.io/ver-1000000/butler-worker:latest
     command: npm run prod:worker
     environment:
       NODE_ENV: "production"
@@ -10,9 +8,7 @@ services:
     volumes:
       - butler-data:/app/data
   web:
-    build:
-      context: .
-      target: web
+    image: ghcr.io/ver-1000000/butler-web:latest
     command: npm run prod:web
     environment:
       NODE_ENV: "production"

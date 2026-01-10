@@ -55,33 +55,36 @@ AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemin
 8. 以降の起動手順に進む(環境変数の `DISCORD_TOKEN` が必要)
 
 ## 開発・デプロイ
-開発・デプロイはDocker ComposeとDocker Buildxが有効になったDockerを利用します。
+開発・デプロイはDocker Composeを利用し、運用時はGHCR(GitHub Container Registry)のイメージをpullして起動します。
 
-最新のDocker Desktopにはデフォルトでバンドルされていますが、
-Docker Desktopを使わない環境では、Docker ComposeとDocker Buildxをそれぞれ自前でインストールする必要があります。
+最新のDocker DesktopにはComposeがデフォルトでバンドルされていますが、
+Docker Desktopを使わない環境では、Docker Composeを自前でインストールする必要があります。
 
-### 手順
-1. 開発用に`compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成する
-2. `compose.override.yaml`の`environment`に環境変数を直書きする(このファイルはGit管理しない)
-3. `docker compose up -d --build`を実行する
-   - `-d` デタッチドモードで起動する。 コンソールにログを表示させたい場合は省略する
-   - `--build` イメージを再ビルドする。 オプションを付けると、Dockerfileの内容が変更された場合に再ビルドされる
-4. `http://localhost:3000`にアクセスしてwebが起動していることを確認する
+### 運用/本番
+1. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成する
+2. `compose.override.yaml`の環境変数などを自身の運用環境のものに書き換える(このファイルはGit管理しない)
+3. (新しいイメージがある場合は) `docker compose pull`を実行してイメージを更新する
+4. `docker compose up -d`を実行する (`-d` デタッチドモードで起動する。 コンソールにログを表示させたい場合は省略する)
 
-### [GCP e2-micro](https://console.cloud.google.com/compute/instancesAdd)へのデプロイ
+### 開発(ローカル)
+1. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成する
+2. `compose.override.yaml`の環境変数などを自身の運用環境のものに書き換え、 **開発用のコメントを外す**
+   - 必要なら `NODE_ENV: "development"` を有効化する
+3. `docker compose pull`を実行する
+4. `docker compose up -d`を実行する
+
+開発時はボリュームマウントにより、ローカルのコード変更がコンテナに即時反映されます。
+
+#### 依存関係を変更したい場合
+- `package.json`/`package-lock.json` を変更した場合は、devイメージの更新が必要です。
+  - mainへマージされればGitHub Actionsでdevイメージが更新されるため、`docker compose pull` し直してください。
+  - すぐに試したい場合は、コンテナ内で `npm install` を実行してください(例: `docker compose exec worker npm install`)。
+
+### [GCP e2-micro](https://console.cloud.google.com/compute/instancesAdd)へのデプロイ例
 1. VMインスタンス(e2-micro)を作成し、必要であればVPCネットワークのファイアウォールルールでポート3000の上りパケットを許可する
 2. VM内でDocker/Docker ComposeとGitを整え、リポジトリをクローンする
-3. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成し、環境変数を設定する
-4. `compose.override.yaml`の`command`を`npm run prod:worker`/`npm run prod:web`に変更する(または該当行を削除して`compose.yaml`のデフォルトを使う)
-5. `docker compose up -d --build`を実行する
-   - メモリ1GBならSwap領域を設定しておくと安定する
 
-### [Oracle Always Free VM](https://cloud.oracle.com/compute/instances)へのデプロイ
-1. Always FreeのComputeインスタンスを作成し、必要であればセキュリティリストでポート3000の受信を許可する
-2. VM内でDocker/Docker ComposeとGitを整え、リポジトリをクローンする
-3. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成し、環境変数を設定する
-4. `compose.override.yaml`の`command`を`npm run prod:worker`/`npm run prod:web`に変更する(または該当行を削除して`compose.yaml`のデフォルトを使う)
-5. `docker compose up -d --build`を実行する
+このあとは、前述の「運用/本番」手順に従ってください。
 
 ## 環境変数(compose.override.yamlのenvironment)の説明
 - `DISCORD_TOKEN`: Discord APIを利用するために必要なトークン
@@ -92,7 +95,7 @@ Docker Desktopを使わない環境では、Docker ComposeとDocker Buildxをそ
 - `AI_PROVIDER`: 利用するAIプロバイダ(gemini / openai / claude / workersai)
 - `AI_MODEL`: 利用するモデル名
 - `AI_API_KEY`: AIプロバイダのAPIキー
-- `AI_CLOUDFLARE_ACCOUNT_ID`: Workers AI利用時のみ必要なAccount ID
+- `AI_CLOUDFLARE_ACCOUNT_ID`: Workers AI利用時のみ必要なAccount ID (オプション)
 - `AI_PROMPT_APPEND`: systemプロンプトへの追記
 
 ## その他

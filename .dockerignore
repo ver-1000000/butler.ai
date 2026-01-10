@@ -8,3 +8,5 @@ Session.vim
 data
 dist
 node_modules
+compose.override.yaml
+compose.override.*.yaml
