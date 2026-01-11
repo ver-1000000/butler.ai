@@ -49,18 +49,10 @@ COPY packages/web/package.json packages/web/package.json
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev
 
-# worker本番イメージ
-FROM base AS worker
+# 本番イメージ
+FROM base AS runtime
 WORKDIR /app
 COPY --from=build /app /app
 COPY --from=prod-deps /app/node_modules /app/node_modules
 RUN mkdir -p /app/data
 CMD ["npm", "run", "prod:worker"]
-
-# web本番イメージ
-FROM base AS web
-WORKDIR /app
-COPY --from=build /app /app
-COPY --from=prod-deps /app/node_modules /app/node_modules
-RUN mkdir -p /app/data
-CMD ["npm", "run", "prod:web"]
