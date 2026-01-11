@@ -69,6 +69,9 @@ Docker Desktopを使わない環境では、Docker Composeを自前でインス�
 ### 開発(ローカル)
 1. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成する
 2. `compose.override.yaml`の環境変数などを自身の運用環境のものに書き換え、 **開発用のコメントを外す**
+   - `image: ghcr.io/ver-1000000/butler:dev`
+   - `command: npm run dev:*`
+   - `volumes: ./:/app` と `butler-node-modules:/app/node_modules`
    - 必要なら `NODE_ENV: "development"` を有効化する
 3. `docker compose pull`を実行する
 4. `docker compose up -d`を実行する

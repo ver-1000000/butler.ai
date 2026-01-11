@@ -1,7 +1,7 @@
+# NOTE:
+# コメントアウトされている箇所は、開発時のみ有効化する
+
 x-common-env: &common-env
-  # NOTE:
-  #   `NODE_ENV`はcompose.yaml側で設定されます。 本番運用では上書きしないでください。
-  #   ローカル開発でNODE_ENVを"development"にしたい場合は、下記のコメントを外してください。
   # NODE_ENV: "development"
   DISCORD_TOKEN: "your-discord-token-here"
   DISCORD_GUILD_ID: "your-discord-guild-id-here"
@@ -16,8 +16,7 @@ x-common-env: &common-env
 
 services:
   worker:
-    # 開発時のみ以下を有効化する
-    # image: ghcr.io/ver-1000000/butler-worker:dev
+    # image: ghcr.io/ver-1000000/butler:dev
     # command: npm run dev:worker
     environment:
       <<: *common-env
@@ -26,8 +25,7 @@ services:
     #   - ./:/app
     #   - butler-node-modules:/app/node_modules
   web:
-    # 開発時のみ以下を有効化する
-    # image: ghcr.io/ver-1000000/butler-web:dev
+    # image: ghcr.io/ver-1000000/butler:dev
     # command: npm run dev:web
     environment:
       <<: *common-env

@@ -23,22 +23,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker metadata (worker)
-        id: meta_worker
+      - name: Docker metadata (main)
+        id: meta_main
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/ver-1000000/butler-worker
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,format=short
-
-      - name: Docker metadata (web)
-        id: meta_web
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/ver-1000000/butler-web
+          images: ghcr.io/ver-1000000/butler
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
@@ -50,34 +39,20 @@ jobs:
         id: meta_dev
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ghcr.io/ver-1000000/butler-worker
-            ghcr.io/ver-1000000/butler-web
+          images: ghcr.io/ver-1000000/butler
           tags: |
             type=raw,value=dev
             type=sha,format=short,prefix=dev-
 
-      - name: Build and push worker
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          target: worker
+          target: runtime
           push: true
-          tags: ${{ steps.meta_worker.outputs.tags }}
-          labels: ${{ steps.meta_worker.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push web
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          target: web
-          push: true
-          tags: ${{ steps.meta_web.outputs.tags }}
-          labels: ${{ steps.meta_web.outputs.labels }}
+          tags: ${{ steps.meta_main.outputs.tags }}
+          labels: ${{ steps.meta_main.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
