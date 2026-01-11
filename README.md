@@ -8,13 +8,6 @@ GCP e2-micro / Oracle Always Free VMにデプロイすると無料枠で動か�
 ## 機能
 - メンションでAIに相談し、必要に応じてスラッシュコマンドを自律実行
 - ボイスチャンネルが開始された際の通知
-- `/butler` スラッシュコマンド群
-  - `/butler memo`: 発言メモのCRUD
-  - `/butler pomodoro`: 擬似ポモドーロタイマー
-  - `/butler wiki`: Wikipediaの概要を引用して返答
-  - `/butler sticker`: 正規表現に反応するスタンプ登録/管理
-
-それぞれのコマンドの詳細については、実装をご覧いただくか、本Bot起動後、コマンドに引数を付けずに実行することで詳細なヘルプが表示されます。
 
 ## AI連携
 AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemini`。
@@ -93,8 +86,6 @@ Docker Desktopを使わない環境では、Docker Composeを自前でインス�
 - `DISCORD_TOKEN`: Discord APIを利用するために必要なトークン
 - `DISCORD_GUILD_ID`: スラッシュコマンドをギルド限定で登録する場合のギルドID(未設定の場合はグローバル登録)
 - `NOTIFY_TEXT_CHANNEL_ID`: 通知など、BOTが自発的に発言する際のテキストチャンネルID
-- `POMODORO_VOICE_CHANNEL_ID`: ポモドーロ機能で利用するボイスチャンネルのID
-- `DETECT_STICKER_RATE`: チャットがstickerの正規表現にマッチした際の反応率を、0.0-1.0で記述(0は無効化、1.0のときは必ず反応)
 - `AI_PROVIDER`: 利用するAIプロバイダ(gemini / openai / claude / workersai)
 - `AI_MODEL`: 利用するモデル名
 - `AI_API_KEY`: AIプロバイダのAPIキー
@@ -107,4 +98,3 @@ Docker Desktopを使わない環境では、Docker Composeを自前でインス�
 
 - `DISCORD_GUILD_ID`: サーバー名を右クリック → 「IDをコピー」
 - `NOTIFY_TEXT_CHANNEL_ID`: 通知用テキストチャンネル名を右クリック → 「IDをコピー」
-- `POMODORO_VOICE_CHANNEL_ID`: ポモドーロ用ボイスチャンネル名を右クリック → 「IDをコピー」

@@ -7,9 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:web": "npm run dev --prefix packages/web",
     "dev:worker": "npm run dev --prefix packages/worker",
-    "prod:web": "npm start --prefix packages/web",
     "prod:worker": "npm start --prefix packages/worker",
     "build": "tsc -b . -v && npm run build --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present"

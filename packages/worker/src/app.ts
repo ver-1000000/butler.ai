@@ -1,17 +1,10 @@
 import { ActivityType, Client, ClientUser, GatewayIntentBits, Partials, TextChannel } from 'discord.js';
 import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from '@butler/core';
-import { MemosStore } from './features/memo/memo.store';
-import { MemoService } from './features/memo/memo.service';
-import { StickersStore } from './features/sticker/sticker.store';
-import { StickerService } from './features/sticker/sticker.service';
 import { NotifyVoiceChannelService } from './features/notify/notify-voice-channel.service';
-import { PomodoroService } from './features/pomodoro/pomodoro.service';
 import { AiAgentService } from './features/ai/agent.service';
 import { AiConversationService } from './features/ai/conversation.service';
 import { InteractiveService } from './features/ai/interactive.service';
-import { WikipediaService } from './features/wiki/wiki.service';
 import { registerSlashCommands } from './features/commands/slash-commands';
-import type { SlashCommandToolContext } from './features/commands/slash-command-tools';
 import { executeSlashCommandTool, getSlashCommandAiTools } from './features/commands/slash-command-tools';
 
 /** 起点となるメインのアプリケーションクラス。 */
@@ -84,19 +77,12 @@ const createClient = (): Client => {
 
 /** 起動に必要な依存関係を生成する。 */
 const createDependencies = (client: Client) => {
-  const memosStore = new MemosStore();
-  const stickersStore = new StickersStore();
-  const pomodoroService = new PomodoroService(client);
-  const toolContext: SlashCommandToolContext = { memosStore, stickersStore, pomodoroService };
   const aiAgentService = new AiAgentService(
-    call => executeSlashCommandTool(call, toolContext),
+    call => executeSlashCommandTool(call),
     getSlashCommandAiTools()
   );
   const aiConversationService = new AiConversationService();
   return {
-    memosStore,
-    stickersStore,
-    pomodoroService,
     aiAgentService,
     aiConversationService
   };
@@ -108,11 +94,7 @@ const runFeatureServices = (
   deps: ReturnType<typeof createDependencies>
 ) => {
   new NotifyVoiceChannelService(client).run();
-  new MemoService(client, deps.memosStore).run();
-  deps.pomodoroService.run();
   new InteractiveService(client, deps.aiAgentService, deps.aiConversationService).run();
-  new WikipediaService(client).run();
-  new StickerService(client, deps.stickersStore).run();
 };
 
 /** 依存を解決しつつアプリケーションを起動する。 */
