@@ -8,8 +8,7 @@ node_modules/
 *.tsbuildinfo
 .DS_Store
 Session.vim
-compose.override.yaml
-compose.override.*.yaml
+.env
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*

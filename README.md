@@ -48,41 +48,21 @@ AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemin
 8. 以降の起動手順に進む(環境変数の `DISCORD_TOKEN` が必要)
 
 ## 開発・デプロイ
-開発・デプロイはDocker Composeを利用し、運用時はGHCR(GitHub Container Registry)のイメージをpullして起動します。
-
-最新のDocker DesktopにはComposeがデフォルトでバンドルされていますが、
-Docker Desktopを使わない環境では、Docker Composeを自前でインストールする必要があります。
+Dockerは利用しません。 Node.jsとnpmを前提にローカルで動かします。
 
 ### 運用/本番
-1. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成する
-2. `compose.override.yaml`の環境変数などを自身の運用環境のものに書き換える(このファイルはGit管理しない)
-3. (新しいイメージがある場合は) `docker compose pull`を実行してイメージを更新する
-4. `docker compose up -d`を実行する (`-d` デタッチドモードで起動する。 コンソールにログを表示させたい場合は省略する)
+1. `.env.example`をコピーして`.env`を作成する
+2. `.env`に本番用の値を記入する(このファイルはGit管理しない)
+3. `npm ci`を実行する
+4. `npm run prod:worker`を実行する
 
 ### 開発(ローカル)
-1. `compose.override.yaml.sample`をコピーして`compose.override.yaml`を作成する
-2. `compose.override.yaml`の環境変数などを自身の運用環境のものに書き換え、 **開発用のコメントを外す**
-   - `image: ghcr.io/ver-1000000/butler:dev`
-   - `command: npm run dev:*`
-   - `volumes: ./:/app` と `butler-node-modules:/app/node_modules`
-   - 必要なら `NODE_ENV: "development"` を有効化する
-3. `docker compose pull`を実行する
-4. `docker compose up -d`を実行する
+1. `.env.example`をコピーして`.env`を作成する
+2. `.env`に開発用の値を記入する
+3. `npm ci`を実行する
+4. `npm run dev:worker`を実行する
 
-開発時はボリュームマウントにより、ローカルのコード変更がコンテナに即時反映されます。
-
-#### 依存関係を変更したい場合
-- `package.json`/`package-lock.json` を変更した場合は、devイメージの更新が必要です。
-  - mainへマージされればGitHub Actionsでdevイメージが更新されるため、`docker compose pull` し直してください。
-  - すぐに試したい場合は、コンテナ内で `npm install` を実行してください(例: `docker compose exec worker npm install`)。
-
-### [GCP e2-micro](https://console.cloud.google.com/compute/instancesAdd)へのデプロイ例
-1. VMインスタンス(e2-micro)を作成し、必要であればVPCネットワークのファイアウォールルールでポート3000の上りパケットを許可する
-2. VM内でDocker/Docker ComposeとGitを整え、リポジトリをクローンする
-
-このあとは、前述の「運用/本番」手順に従ってください。
-
-## 環境変数(compose.override.yamlのenvironment)の説明
+## 環境変数(.env)の説明
 - `DISCORD_TOKEN`: Discord APIを利用するために必要なトークン
 - `DISCORD_GUILD_ID`: スラッシュコマンドをギルド限定で登録する場合のギルドID(未設定の場合はグローバル登録)
 - `NOTIFY_TEXT_CHANNEL_ID`: 通知など、BOTが自発的に発言する際のテキストチャンネルID
