@@ -1,5 +1,5 @@
 import { Client, SlashCommandBuilder } from 'discord.js';
-import { DISCORD_GUILD_ID } from '@butler/core';
+import { DISCORD_GUILD_ID } from '../../core/environment';
 
 /** Discordへ登録するスラッシュコマンド定義。 */
 export const SLASH_COMMANDS = [

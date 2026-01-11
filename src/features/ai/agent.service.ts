@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
-import type { AiMessage, AiToolCall, AiToolDefinition } from '@butler/core';
-import { AI_PROMPT_APPEND, createAiProvider } from '@butler/core';
+import type { AiMessage, AiToolCall, AiToolDefinition } from '../../core/ai-provider';
+import { createAiProvider } from '../../core/ai-provider';
+import { AI_PROMPT_APPEND } from '../../core/environment';
 
 import { PrettyText } from '../../utils/pretty-text.util';
 

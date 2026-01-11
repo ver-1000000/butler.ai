@@ -1,3 +1,2 @@
 import 'dotenv/config';
-
-export * from './app';
+import './app';

@@ -1,9 +1,16 @@
 {
-  "files": [],
-  "references": [
-    { "path": "packages/core" },
-    { "path": "packages/web" },
-    { "path": "packages/web/tsconfig.server.json" },
-    { "path": "packages/worker" }
-  ]
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "incremental": true
+  },
+  "include": ["src/**/*.ts"]
 }

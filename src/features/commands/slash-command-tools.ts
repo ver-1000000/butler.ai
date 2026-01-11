@@ -1,4 +1,4 @@
-import type { AiToolCall, AiToolDefinition } from '@butler/core';
+import type { AiToolCall, AiToolDefinition } from '../../core/ai-provider';
 
 /** スラッシュコマンドの引数定義。 */
 export type SlashCommandToolArgument = {

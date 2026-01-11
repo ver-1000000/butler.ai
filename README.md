@@ -16,20 +16,18 @@ AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemin
 - Workers AIは`AI_CLOUDFLARE_ACCOUNT_ID`が必要
 
 ## ファイル・ディレクトリ構成
-本プロジェクトは [npmのWorkspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces)を利用したモノリポ構成となっております。
+本プロジェクトは単一リポジトリ構成です。 `src/`配下に機能を集約しています。
 
 ```
 .
 ├── package.json
-├── tsconfig.base.json    # モノリポのパッケージ達に継承されるベースのtsconfig.json
-├── tsconfig.json         # referencesで関連のtsconfig.jsonをまとめる、ビルド用tsconfig.json
-├── packages/             # モノリポのパッケージ郡が格納されるディレクトリ
-│   ├── core/             # 共通で利用するライブラリや定数、機能など
-│   │   └── ... # 省略
-│   ├── worker/           # Discordのイベントを常時監視するワーカー関連の機能
-│   │   └── ... # 省略
-│   └── web/              # ブラウザからBOTを操作するための、Next.jsによるUIを提供 (開発中)
-│       └── ... # 省略
+├── tsconfig.json
+├── src/
+│   ├── assets/           # アセット(予定)
+│   ├── core/             # 環境変数/共通ロジック
+│   ├── features/         # Discordの機能実装
+│   ├── plugins/          # プラグイン(予定)
+│   └── utils/            # 汎用ユーティリティ
 └── ... # 省略
 ```
 
@@ -54,13 +52,14 @@ Dockerは利用しません。 Node.jsとnpmを前提にローカルで動かし
 1. `.env.example`をコピーして`.env`を作成する
 2. `.env`に本番用の値を記入する(このファイルはGit管理しない)
 3. `npm ci`を実行する
-4. `npm run prod:worker`を実行する
+4. `npm run build`を実行する
+5. `npm run start`を実行する
 
 ### 開発(ローカル)
 1. `.env.example`をコピーして`.env`を作成する
 2. `.env`に開発用の値を記入する
 3. `npm ci`を実行する
-4. `npm run dev:worker`を実行する
+4. `npm run dev`を実行する
 
 ## 環境変数(.env)の説明
 - `DISCORD_TOKEN`: Discord APIを利用するために必要なトークン

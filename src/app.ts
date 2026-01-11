@@ -1,5 +1,5 @@
 import { ActivityType, Client, ClientUser, GatewayIntentBits, Partials, TextChannel } from 'discord.js';
-import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from '@butler/core';
+import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from './core/environment';
 import { NotifyVoiceChannelService } from './features/notify/notify-voice-channel.service';
 import { AiAgentService } from './features/ai/agent.service';
 import { AiConversationService } from './features/ai/conversation.service';

@@ -6,8 +6,8 @@ import type { Database as SqliteDb } from 'better-sqlite3';
 /** プロセスごとのシングルトン。 Web/workerは別プロセスで動作するため、それぞれ独自の接続を持つ。 */
 let db: SqliteDb | null = null;
 
-/** worker/webどちらから呼ばれても同じ保存先になるよう固定する。 */
-const resolveSqlitePath = () => path.resolve(__dirname, '../../../data/butler.sqlite');
+/** 実行ディレクトリ配下にDBを固定する。 */
+const resolveSqlitePath = () => path.resolve(process.cwd(), 'data/butler.sqlite');
 
 /** worker/webのストアやAPIがDBアクセスするときの入口。初回のみ初期化して使い回す。 */
 export const getSqliteDb = (): SqliteDb => {

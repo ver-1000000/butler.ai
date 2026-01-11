@@ -1,16 +1,15 @@
 {
-  "name": "@butler/monorepo",
+  "name": "butler",
   "version": "2.0.0",
   "description": "Some features Discord BOT",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
   "scripts": {
-    "dev:worker": "npm run dev --prefix packages/worker",
-    "prod:worker": "npm start --prefix packages/worker",
-    "build": "tsc -b . -v && npm run build --workspaces --if-present",
-    "clean": "npm run clean --workspaces --if-present"
+    "dev": "npx ts-node-dev src/main.ts",
+    "start": "NODE_ENV=production node dist/main.js",
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist *.tsbuildinfo"
   },
   "repository": {
     "type": "git",
@@ -18,13 +17,23 @@
   },
   "author": "akai <@Ver1000000000>",
   "license": "MIT",
+  "dependencies": {
+    "@discordjs/opus": "^0.10.0",
+    "@discordjs/voice": "^0.19.0",
+    "better-sqlite3": "^11.5.0",
+    "discord.js": "^14.25.1",
+    "dotenv": "^16.4.7",
+    "ffmpeg-static": "^5.3.0",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2",
+    "sodium": "^3.0.2"
+  },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.0.3",
     "@types/node-cron": "^3.0.11",
     "rimraf": "^6.1.2",
     "ts-node-dev": "^2.0.0",
-    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
   },
   "engines": {

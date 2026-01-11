@@ -1,5 +1,5 @@
 import type { Client, Message } from 'discord.js';
-import type { AiMessage } from '@butler/core';
+import type { AiMessage } from '../../core/ai-provider';
 
 import { AiAgentService } from './agent.service';
 import { AiConversationService } from './conversation.service';

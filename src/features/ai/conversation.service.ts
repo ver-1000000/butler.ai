@@ -1,5 +1,5 @@
 import type { Message } from 'discord.js';
-import type { AiMessage } from '@butler/core';
+import type { AiMessage } from '../../core/ai-provider';
 
 /** AIとの会話コンテキストをメモリ上で保持するサービス。 */
 export class AiConversationService {
