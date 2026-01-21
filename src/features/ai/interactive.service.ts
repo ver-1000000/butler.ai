@@ -93,6 +93,16 @@ export class InteractiveService {
     const mentionId = this.client.user?.id;
     const chain: Message[] = [];
     let currentId = message.reference?.messageId;
+    if (!currentId || !mentionId) {
+      return { sessionId: null, messages: [], messageIds: [] };
+    }
+
+    const first = await channel.messages.fetch(currentId).catch(() => null);
+    if (!first || first.author.id !== mentionId) {
+      return { sessionId: null, messages: [], messageIds: [] };
+    }
+    chain.push(first);
+    currentId = first.reference?.messageId;
 
     while (currentId && chain.length < 20) {
       const fetched = await channel.messages.fetch(currentId).catch(() => null);
