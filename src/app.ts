@@ -6,6 +6,8 @@ import { AiConversationService } from './features/ai/conversation.service';
 import { InteractiveService } from './features/ai/interactive.service';
 import { registerSlashCommands } from './features/commands/slash-commands';
 import { executeSlashCommandTool, getSlashCommandAiTools } from './features/commands/slash-command-tools';
+import { EventReminderService } from './features/event-reminder/event-reminder.service';
+import { handleAddEventCommand } from './features/event-reminder/add-event.command';
 
 /** 起点となるメインのアプリケーションクラス。 */
 class App {
@@ -18,6 +20,12 @@ class App {
     this.client.on('clientReady', async () => {
       this.initializeBotStatus(this.client.user);
       await registerSlashCommands(this.client);
+    });
+    this.client.on('interactionCreate', async interaction => {
+      if (!interaction.isChatInputCommand()) return;
+      if (interaction.commandName === 'add-event') {
+        await handleAddEventCommand(interaction);
+      }
     });
     this.client.on('error', e => this.error(e));
     this.client.login(DISCORD_TOKEN);
@@ -69,7 +77,8 @@ const createClient = (): Client => {
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildScheduledEvents
   ];
   const clientOptions = { intents, partials: [Partials.Message, Partials.Channel, Partials.Reaction] };
   return new Client(clientOptions);
@@ -95,6 +104,7 @@ const runFeatureServices = (
 ) => {
   new NotifyVoiceChannelService(client).run();
   new InteractiveService(client, deps.aiAgentService, deps.aiConversationService).run();
+  new EventReminderService(client).run();
 };
 
 /** 依存を解決しつつアプリケーションを起動する。 */
