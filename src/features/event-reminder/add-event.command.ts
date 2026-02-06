@@ -28,44 +28,20 @@ export const ADD_EVENT_COMMAND = new SlashCommandBuilder()
   )
   .addStringOption((option) =>
     option
-      .setName("description")
-      .setDescription("イベントの説明")
-      .setRequired(false),
-  )
-  .addUserOption((option) =>
-    option
-      .setName("participant1")
-      .setDescription("リマインド対象ユーザー1")
-      .setRequired(false),
-  )
-  .addUserOption((option) =>
-    option
-      .setName("participant2")
-      .setDescription("リマインド対象ユーザー2")
-      .setRequired(false),
-  )
-  .addUserOption((option) =>
-    option
-      .setName("participant3")
-      .setDescription("リマインド対象ユーザー3")
-      .setRequired(false),
-  )
-  .addUserOption((option) =>
-    option
-      .setName("participant4")
-      .setDescription("リマインド対象ユーザー4")
-      .setRequired(false),
-  )
-  .addUserOption((option) =>
-    option
-      .setName("participant5")
-      .setDescription("リマインド対象ユーザー5")
+      .setName("end")
+      .setDescription("終了日時 (例: 2024-12-25 21:00) 省略時は開始から2時間後")
       .setRequired(false),
   )
   .addStringOption((option) =>
     option
-      .setName("timings")
-      .setDescription("リマインドタイミング (カンマ区切り: 7d,3d,1d,0d)")
+      .setName("description")
+      .setDescription("イベントの説明")
+      .setRequired(false),
+  )
+  .addStringOption((option) =>
+    option
+      .setName("participants")
+      .setDescription("リマインド対象 (例: @user1 @user2) 最大10人")
       .setRequired(false),
   );
 
@@ -93,18 +69,28 @@ function parseDateTime(input: string): Date | null {
   return date;
 }
 
+/** メンション最大人数。 */
+const MAX_PARTICIPANTS = 10;
+
 /**
- * カンマ区切りのタイミング文字列をパースする。
+ * メンション文字列からユーザーIDを抽出する。
+ * @param input メンション文字列 (例: "<@123> <@!456>")
+ * @returns ユーザーIDの配列（重複除去済み）
  */
-function parseTimings(input: string | null): ReminderTiming[] {
-  if (!input) return VALID_TIMINGS;
+function parseParticipants(input: string | null): string[] {
+  if (!input) return [];
 
-  const timings = input
-    .split(",")
-    .map((t) => t.trim() as ReminderTiming)
-    .filter((t) => VALID_TIMINGS.includes(t));
+  const mentionRegex = /<@!?(\d+)>/g;
+  const ids: string[] = [];
+  let match: RegExpExecArray | null;
 
-  return timings.length > 0 ? timings : VALID_TIMINGS;
+  while ((match = mentionRegex.exec(input)) !== null) {
+    if (!ids.includes(match[1])) {
+      ids.push(match[1]);
+    }
+  }
+
+  return ids;
 }
 
 /**
@@ -124,8 +110,8 @@ export async function handleAddEventCommand(
 
   const name = interaction.options.getString("name", true);
   const startInput = interaction.options.getString("start", true);
+  const endInput = interaction.options.getString("end");
   const description = interaction.options.getString("description") || "";
-  const timingsInput = interaction.options.getString("timings");
 
   // 開始日時のパース
   const scheduledStartTime = parseDateTime(startInput);
@@ -146,23 +132,48 @@ export async function handleAddEventCommand(
     return;
   }
 
-  // 参加者の収集
-  const participants: string[] = [];
-  for (let i = 1; i <= 5; i++) {
-    const user = interaction.options.getUser(`participant${i}`);
-    if (user) {
-      participants.push(user.id);
+  // 終了日時のパース（省略時は開始から2時間後）
+  let scheduledEndTime: Date;
+  if (endInput) {
+    const parsedEnd = parseDateTime(endInput);
+    if (!parsedEnd) {
+      await interaction.reply({
+        content: "終了日時の形式が正しくありません。例: `2024-12-25 21:00`",
+        ephemeral: true,
+      });
+      return;
     }
+    if (parsedEnd <= scheduledStartTime) {
+      await interaction.reply({
+        content: "終了日時は開始日時より後を指定してください。",
+        ephemeral: true,
+      });
+      return;
+    }
+    scheduledEndTime = parsedEnd;
+  } else {
+    scheduledEndTime = new Date(
+      scheduledStartTime.getTime() + 2 * 60 * 60 * 1000,
+    );
   }
 
-  // タイミングのパース
-  const timings = parseTimings(timingsInput);
+  // 参加者の収集
+  const participantsInput = interaction.options.getString("participants");
+  const participants = parseParticipants(participantsInput);
 
-  // BotMetaの生成
+  if (participants.length > MAX_PARTICIPANTS) {
+    await interaction.reply({
+      content: `リマインド対象は最大${MAX_PARTICIPANTS}人までです。`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // BotMetaの生成（タイミングは固定: 7d, 3d, 1d, 0d）
   const botMeta = createDefaultBotMeta(
     interaction.user.id,
     participants,
-    timings,
+    VALID_TIMINGS,
   );
   const fullDescription = updateDescriptionWithMeta(description, botMeta);
 
@@ -171,6 +182,7 @@ export async function handleAddEventCommand(
     const event = await guild.scheduledEvents.create({
       name,
       scheduledStartTime,
+      scheduledEndTime,
       privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
       entityType: GuildScheduledEventEntityType.External,
       entityMetadata: { location: "Discord" },
@@ -196,7 +208,6 @@ export async function handleAddEventCommand(
         ``,
         `**${event.name}**`,
         `開始: ${startTimeStr}`,
-        `リマインド: ${timings.join(", ")}`,
         `対象: ${participantMentions}`,
       ].join("\n"),
     });
