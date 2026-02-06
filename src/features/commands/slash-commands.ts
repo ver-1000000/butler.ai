@@ -1,11 +1,13 @@
 import { Client, SlashCommandBuilder } from 'discord.js';
 import { DISCORD_GUILD_ID } from '../../core/environment';
+import { ADD_EVENT_COMMAND } from '../event-reminder/add-event.command';
 
 /** Discordへ登録するスラッシュコマンド定義。 */
 export const SLASH_COMMANDS = [
   new SlashCommandBuilder()
     .setName('butler')
-    .setDescription('butlerを呼び出す')
+    .setDescription('butlerを呼び出す'),
+  ADD_EVENT_COMMAND
 ].map(command => command.toJSON());
 
 /**
