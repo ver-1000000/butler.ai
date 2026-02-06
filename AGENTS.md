@@ -18,7 +18,7 @@
 - `npm run clean` `dist/` と `*.tsbuildinfo` を削除
 
 ## Coding Style & Naming Conventions
-- ファイル命名は `*.service.ts` / `*.store.ts` / `*.model.ts`(kebab case)
+- ファイル命名は `*.service.ts` / `*.store.ts` / `*.model.ts` / `*.util.ts` / `*.command.ts`(kebab case)
 - Discord コマンドのヘルプ文は実装と同じファイルに置く方針
 
 ## Testing Guidelines
