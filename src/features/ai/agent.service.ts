@@ -5,8 +5,16 @@ import { AI_PROMPT_APPEND } from '../../core/environment';
 
 import { PrettyText } from '../../utils/pretty-text.util';
 
+export type AiToolExecutionContext = {
+  guildId?: string;
+  userId?: string;
+};
+
 /** AIツール実行関数の型。 */
-export type AiToolExecutor = (call: AiToolCall) => Promise<string>;
+export type AiToolExecutor = (
+  call: AiToolCall,
+  context?: AiToolExecutionContext
+) => Promise<string>;
 
 /** AI生成を担当するサービス。 */
 export class AiAgentService {
@@ -21,9 +29,9 @@ export class AiAgentService {
    * AIに生成を依頼し、応答テキストを返す。
    * @param messages AIに渡すメッセージ列
    */
-  async reply(messages: AiMessage[]): Promise<string> {
+  async reply(messages: AiMessage[], context?: AiToolExecutionContext): Promise<string> {
     try {
-      return await this.replyWithTools(messages);
+      return await this.replyWithTools(messages, context);
     } catch (error) {
       const errorCode = 'AI_ERROR';
       const message = error instanceof Error ? error.message : 'Unknown AI error';
@@ -35,14 +43,19 @@ export class AiAgentService {
    * ツール呼び出しを含めたAI応答を生成する。
    * @param messages AIに渡すメッセージ列
    */
-  private async replyWithTools(messages: AiMessage[]): Promise<string> {
+  private async replyWithTools(
+    messages: AiMessage[],
+    context?: AiToolExecutionContext
+  ): Promise<string> {
     const maxIterations = 3;
     let currentMessages = [this.buildSystemMessage(), ...messages];
 
     for (let iteration = 0; iteration < maxIterations; iteration += 1) {
       const response = await this.provider.generate({ messages: currentMessages, tools: this.tools });
       if (response.toolCalls?.length) {
-        const toolResponses = (await Promise.all(response.toolCalls.map(call => this.executeTool(call)))).flat();
+        const toolResponses = (
+          await Promise.all(response.toolCalls.map(call => this.executeTool(call, context)))
+        ).flat();
         currentMessages = [...currentMessages, ...toolResponses];
         continue;
       }
@@ -76,9 +89,9 @@ export class AiAgentService {
    * ツールを実行し、AIに返すメッセージ列を組み立てる。
    * @param call ツール呼び出し
    */
-  private async executeTool(call: AiToolCall): Promise<AiMessage[]> {
+  private async executeTool(call: AiToolCall, context?: AiToolExecutionContext): Promise<AiMessage[]> {
     const toolCallId = this.ensureToolCallId(call);
-    const result = await this.toolExecutor(call);
+    const result = await this.toolExecutor(call, context);
     return [
       { role: 'assistant', toolCall: call },
       { role: 'tool', toolName: call.name, toolCallId, content: { result } }

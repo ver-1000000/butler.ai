@@ -1,6 +1,6 @@
 import type { ChatInputCommandInteraction, Client } from 'discord.js';
 import {
-  executeSlashCommandTool,
+  executeSlashCommandToolWithContext,
   fromSlashSubcommandName,
   getSlashCommandTool
 } from './slash-command-tools';
@@ -40,18 +40,10 @@ export class ButlerCommandService {
       }
     }
 
-    if (tool.arguments.some(arg => arg.name === 'created_by')) {
-      args.created_by = interaction.user.id;
-    }
-
-    if (tool.arguments.some(arg => arg.name === 'guild_id') && interaction.guildId) {
-      args.guild_id = interaction.guildId;
-    }
-
-    const result = await executeSlashCommandTool({
-      name: toolName,
-      arguments: args
-    });
+    const result = await executeSlashCommandToolWithContext(
+      { name: toolName, arguments: args },
+      { guildId: interaction.guildId ?? undefined, userId: interaction.user.id }
+    );
 
     await interaction.reply({
       content: result,
