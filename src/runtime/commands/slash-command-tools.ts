@@ -28,6 +28,10 @@ export type SlashCommandToolContext = {
   userId?: string;
 };
 
+type RegisterSlashCommandToolOptions = {
+  aiHint?: string;
+};
+
 /** スラッシュコマンドツールの実行関数。 */
 export type SlashCommandToolHandler = (
   args: Record<string, unknown>,
@@ -36,6 +40,7 @@ export type SlashCommandToolHandler = (
 
 const TOOL_DEFINITIONS: SlashCommandToolDefinition[] = [];
 const TOOL_HANDLERS = new Map<string, SlashCommandToolHandler>();
+const TOOL_AI_HINTS = new Map<string, string>();
 
 /**
  * 現時点でAIに公開するスラッシュコマンドのツール一覧を返す。
@@ -49,7 +54,8 @@ export const getSlashCommandTools = (): SlashCommandToolDefinition[] => {
  */
 export const registerSlashCommandTool = (
   tool: SlashCommandToolDefinition,
-  handler?: SlashCommandToolHandler
+  handler?: SlashCommandToolHandler,
+  options?: RegisterSlashCommandToolOptions
 ): void => {
   const existingIndex = TOOL_DEFINITIONS.findIndex(item => item.name === tool.name);
   if (existingIndex >= 0) {
@@ -60,6 +66,10 @@ export const registerSlashCommandTool = (
 
   if (handler) {
     TOOL_HANDLERS.set(tool.name, handler);
+  }
+
+  if (options?.aiHint) {
+    TOOL_AI_HINTS.set(tool.name, options.aiHint);
   }
 };
 
@@ -79,7 +89,9 @@ export const registerSlashCommandToolHandler = (
 export const getSlashCommandAiTools = (): AiToolDefinition[] => {
   return getSlashCommandTools().map(tool => ({
     name: tool.name,
-    description: tool.description,
+    description: TOOL_AI_HINTS.has(tool.name)
+      ? `${tool.description}\nAI方針: ${TOOL_AI_HINTS.get(tool.name)}`
+      : tool.description,
     parameters: {
       type: 'object',
       properties: tool.arguments.reduce<Record<string, { type: 'string'; description?: string }>>(

@@ -30,7 +30,7 @@ export const bootstrapPlugins = (client: Client): void => {
   const registerPluginTools = (): void => {
     for (const plugin of plugins) {
       for (const tool of plugin.tools ?? []) {
-        registerSlashCommandTool(tool);
+        registerSlashCommandTool(tool, undefined, { aiHint: plugin.aiPolicy });
       }
     }
   };
@@ -42,9 +42,13 @@ export const bootstrapPlugins = (client: Client): void => {
     for (const plugin of plugins) {
       const handlers = plugin.handlers ?? {};
       for (const [name, handler] of Object.entries(handlers)) {
-        registerSlashCommandToolHandler(name, (args, context) => {
+        registerSlashCommandToolHandler(name, async (args, context) => {
           const mergedContext: PluginToolContext = { client, ...context };
-          return handler(args, mergedContext);
+          const normalizer = plugin.normalizeToolArgs?.[name];
+          const normalizedArgs = normalizer
+            ? await normalizer(args, mergedContext)
+            : args;
+          return handler(normalizedArgs, mergedContext);
         });
       }
     }
