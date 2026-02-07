@@ -1,5 +1,5 @@
 import type { Client } from 'discord.js';
-import type { SlashCommandToolDefinition } from '../features/commands/slash-command-tools';
+import type { SlashCommandToolDefinition } from '../runtime/commands/slash-command-tools';
 
 /**
  * ツール実行時にフレームワーク側から渡される実行コンテキスト。
@@ -17,7 +17,7 @@ export type PluginToolContext = {
 /**
  * プラグインが提供するツール実行関数のシグネチャ。
  * args はツール定義で宣言した引数、context は実行時コンテキスト。
- * 利用箇所: src/plugins/event-reminder/plugin.ts などの handlers 定義。
+ * 利用箇所: src/plugins/event-reminder/manifest.ts などの handlers 定義。
  */
 export type PluginToolHandler = (
   args: Record<string, unknown>,
@@ -28,7 +28,7 @@ export type PluginToolHandler = (
  * プラグインをフレームワークへ登録するためのマニフェスト。
  * 利用箇所:
  * - src/plugins/index.ts の plugins 配列に格納される
- * - src/app.ts から bootstrapPlugins 経由で消費される
+ * - src/main.ts から bootstrapPlugins 経由で消費される
  */
 export type PluginManifest = {
   /** プラグインの一意な識別子。 */

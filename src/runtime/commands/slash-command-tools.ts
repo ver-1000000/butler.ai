@@ -1,5 +1,12 @@
 import type { AiToolCall, AiToolDefinition } from '../../core/ai-provider';
 
+/**
+ * /butler と AI が共通利用する「ツールレジストリ」。
+ * プラグイン側はここへツール定義/実行ハンドラを登録し、
+ * コマンド登録・AI実行・スラッシュコマンド実行の各経路は
+ * このレジストリを参照して同一の機能セットを扱う。
+ */
+
 /** スラッシュコマンドの引数定義。 */
 export type SlashCommandToolArgument = {
   name: string;
@@ -35,27 +42,6 @@ const TOOL_HANDLERS = new Map<string, SlashCommandToolHandler>();
  */
 export const getSlashCommandTools = (): SlashCommandToolDefinition[] => {
   return TOOL_DEFINITIONS;
-};
-
-/**
- * 指定名のツール定義を取得する。
- */
-export const getSlashCommandTool = (name: string): SlashCommandToolDefinition | undefined => {
-  return TOOL_DEFINITIONS.find(tool => tool.name === name);
-};
-
-/**
- * ツール名をスラッシュコマンド用のサブコマンド名に変換する。
- */
-export const toSlashSubcommandName = (toolName: string): string => {
-  return toolName.replace(/_/g, '-');
-};
-
-/**
- * スラッシュコマンド用サブコマンド名をツール名に戻す。
- */
-export const fromSlashSubcommandName = (subcommandName: string): string => {
-  return subcommandName.replace(/-/g, '_');
 };
 
 /**
@@ -111,21 +97,11 @@ export const getSlashCommandAiTools = (): AiToolDefinition[] => {
 /**
  * AIからのツール呼び出しを実行する。
  * @param call ツール呼び出し
+ * @param context 実行コンテキスト
  */
-export const executeSlashCommandTool = async (call: AiToolCall): Promise<string> => {
-  const handler = TOOL_HANDLERS.get(call.name);
-  if (!handler) {
-    return `未対応のコマンドです: ${call.name}`;
-  }
-  return handler(call.arguments);
-};
-
-/**
- * AIからのツール呼び出しを実行する(実行コンテキスト付き)。
- */
-export const executeSlashCommandToolWithContext = async (
+export const executeSlashCommandTool = async (
   call: AiToolCall,
-  context: SlashCommandToolContext
+  context: SlashCommandToolContext = {}
 ): Promise<string> => {
   const handler = TOOL_HANDLERS.get(call.name);
   if (!handler) {

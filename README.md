@@ -12,8 +12,8 @@ GCP e2-micro / Oracle Always Free VMにデプロイすると無料枠で動か�
 - ボイスチャンネルが開始された際の通知
 
 ## プラグイン
-このBotにおけるプラグインは、機能をモジュールとして追加するための単位です。
-各プラグインは `src/plugins/<plugin-name>/plugin.ts` でマニフェストを公開し、起動時に一括登録されます。
+このBotにおけるプラグインとは、非コア機能をモジュールとして追加するための単位です。
+各プラグインは `src/plugins/<plugin-name>/manifest.ts` でマニフェストを公開し、起動時に一括登録されます。
 
 プラグインの具体的な追加手順は `src/plugins/README.md` を参照してください。
 
@@ -35,7 +35,7 @@ AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemin
 ├── src/
 │   ├── assets/           # アセット(予定)
 │   ├── core/             # 環境変数/共通ロジック
-│   ├── features/         # Discordの機能実装
+│   ├── runtime/          # Discord Botの実行機構
 │   ├── plugins/          # プラグイン実装とマニフェスト
 │   └── utils/            # 汎用ユーティリティ
 └── ... # 省略

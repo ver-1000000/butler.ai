@@ -2,9 +2,16 @@ import type { Client } from "discord.js";
 import {
   registerSlashCommandTool,
   registerSlashCommandToolHandler,
-} from "../features/commands/slash-command-tools";
-import type { PluginManifest, PluginToolContext } from "./plugin-types";
-import eventReminder from "./event-reminder/plugin";
+} from "../runtime/commands/slash-command-tools";
+import type { PluginManifest, PluginToolContext } from "./manifest.types";
+import eventReminder from "./event-reminder/manifest";
+
+/**
+ * プラグイン層のエントリポイント。
+ * 各プラグインのマニフェストを読み取り、/butler と AI が共有する
+ * ツールレジストリ(src/runtime/commands/slash-command-tools.ts)へ橋渡しする。
+ * あわせて、プラグイン固有の起動処理(start)もここで一括実行する。
+ */
 
 /**
  * 起動対象のプラグイン一覧。
@@ -13,7 +20,7 @@ const plugins: PluginManifest[] = [eventReminder];
 
 /**
  * プラグイン基盤の初期化を一括で実行する公開API。
- * 呼び出し元: src/app.ts の bootstrap()。
+ * 呼び出し元: src/main.ts の bootstrap()。
  */
 export const bootstrapPlugins = (client: Client): void => {
   /**

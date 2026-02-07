@@ -1,6 +1,6 @@
 import { Client, SlashCommandBuilder } from 'discord.js';
 import { DISCORD_GUILD_ID } from '../../core/environment';
-import { getSlashCommandTools, toSlashSubcommandName } from './slash-command-tools';
+import { getSlashCommandTools } from './slash-command-tools';
 
 const buildSlashCommands = () => {
   const root = new SlashCommandBuilder()
@@ -10,7 +10,7 @@ const buildSlashCommands = () => {
   for (const tool of getSlashCommandTools()) {
     root.addSubcommand(subcommand => {
       subcommand
-        .setName(toSlashSubcommandName(tool.name))
+        .setName(tool.name)
         .setDescription(tool.description);
       for (const arg of tool.arguments) {
         subcommand.addStringOption(option =>

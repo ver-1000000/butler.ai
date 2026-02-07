@@ -3,7 +3,7 @@
 このリポジトリは単一構成です。 `src/`配下に機能をまとめています。
 
 - `src/core/` 共通定数と環境変数ローダー
-- `src/features/` Discord Bot 本体の機能
+- `src/runtime/` Discord Bot 本体の実行機構
 - `src/utils/` 汎用ユーティリティ
 - `src/assets/` アセット(予定)
 - `src/plugins/` プラグイン実装とマニフェスト

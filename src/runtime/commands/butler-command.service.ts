@@ -1,8 +1,7 @@
 import type { ChatInputCommandInteraction, Client } from 'discord.js';
 import {
-  executeSlashCommandToolWithContext,
-  fromSlashSubcommandName,
-  getSlashCommandTool
+  executeSlashCommandTool,
+  getSlashCommandTools
 } from './slash-command-tools';
 
 /** /butler スラッシュコマンドのルーティングを担当するサービス。 */
@@ -20,13 +19,12 @@ export class ButlerCommandService {
 
   /** /butler コマンドを処理する。 */
   private async handle(interaction: ChatInputCommandInteraction): Promise<void> {
-    const subcommand = interaction.options.getSubcommand();
-    const toolName = fromSlashSubcommandName(subcommand);
-    const tool = getSlashCommandTool(toolName);
+    const toolName = interaction.options.getSubcommand();
+    const tool = getSlashCommandTools().find(item => item.name === toolName);
 
     if (!tool) {
       await interaction.reply({
-        content: `未対応のコマンドです: ${subcommand}`,
+        content: `未対応のコマンドです: ${toolName}`,
         ephemeral: true
       });
       return;
@@ -40,7 +38,7 @@ export class ButlerCommandService {
       }
     }
 
-    const result = await executeSlashCommandToolWithContext(
+    const result = await executeSlashCommandTool(
       { name: toolName, arguments: args },
       { guildId: interaction.guildId ?? undefined, userId: interaction.user.id }
     );

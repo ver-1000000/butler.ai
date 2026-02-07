@@ -6,13 +6,13 @@
 
 - プラグイン追加時の迷いをなくす
 - `/butler` サブコマンドとAIツール実行を同じ実装で提供する
-- `app.ts` に個別の初期化コードを増やさない
+- `main.ts` に個別の初期化コードを増やさない
 
 ## 先に読むファイル
 
-- `src/plugins/plugin-types.ts`
+- `src/plugins/manifest.types.ts`
 - `src/plugins/index.ts`
-- `src/plugins/event-reminder/plugin.ts`
+- `src/plugins/event-reminder/manifest.ts`
 
 ## 必須ファイル構成
 
@@ -21,21 +21,20 @@
 ```text
 src/plugins/
   sample-plugin/
-    plugin.ts
+    manifest.ts
     ... 実装ファイル
 ```
 
-## plugin.tsの実装ルール
+## manifest.tsの実装ルール
 
-`plugin.ts` は `PluginManifest` を `default export` する
+`manifest.ts` は `PluginManifest` を `default export` する
 
 - `id`
   - プラグイン識別子
   - 既存と重複しない文字列にする
 - `tools`
   - `/butler` サブコマンドとAI公開用の定義
-  - `name` は `snake_case` 推奨
-  - `/butler` 側では自動で `kebab-case` に変換される
+  - `name` は `/butler` のサブコマンド名としてそのまま使われる
 - `handlers`
   - `tools[].name` と同名キーで処理を実装する
   - 引数は `args` と `context` を受ける
@@ -47,7 +46,7 @@ src/plugins/
 
 ```ts
 import type { Client } from 'discord.js';
-import type { PluginManifest } from '../plugin-types';
+import type { PluginManifest } from '../manifest.types';
 
 const manifest: PluginManifest = {
   id: 'sample-plugin',
@@ -82,7 +81,7 @@ export default manifest;
 `src/plugins/index.ts` の `plugins` 配列に追加する
 
 ```ts
-import samplePlugin from './sample-plugin/plugin';
+import samplePlugin from './sample-plugin/manifest';
 
 const plugins: PluginManifest[] = [
   eventReminder,

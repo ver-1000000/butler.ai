@@ -1,9 +1,9 @@
 import type { Client } from 'discord.js';
-import type { PluginManifest } from '../plugin-types';
+import type { PluginManifest } from '../manifest.types';
 import { createEventReminder } from './add-event.command';
 import { EventReminderService } from './event-reminder.service';
 
-const EVENT_REMINDER_TOOL_NAME = 'event_reminder';
+const EVENT_REMINDER_TOOL_NAME = 'event-reminder';
 
 const resolveGuildId = async (client: Client, guildId?: string): Promise<string | null> => {
   if (guildId) return guildId;
