@@ -58,7 +58,10 @@ export class InteractiveService {
     const processingReaction = await this.addReactionSafely(message, this.processingEmoji);
     this.aiConversationService.addUserMessage(sessionId, content);
     const messages = this.buildContextMessages(sessionId);
-    const text = await this.aiAgentService.reply(messages);
+    const text = await this.aiAgentService.reply(messages, {
+      guildId: message.guildId ?? undefined,
+      userId: message.author.id
+    });
     const replyMessage = await message.reply(text);
     this.aiConversationService.addAssistantMessage(sessionId, text, replyMessage.id);
     await this.removeReactionSafely(processingReaction);

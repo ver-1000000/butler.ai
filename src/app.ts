@@ -6,11 +6,12 @@ import { AiConversationService } from './features/ai/conversation.service';
 import { InteractiveService } from './features/ai/interactive.service';
 import { ButlerCommandService } from './features/commands/butler-command.service';
 import { registerSlashCommands } from './features/commands/slash-commands';
-import { executeSlashCommandTool, getSlashCommandAiTools } from './features/commands/slash-command-tools';
 import {
-  registerPluginHandlers,
-  registerPluginTools,
-  startPlugins
+  executeSlashCommandToolWithContext,
+  getSlashCommandAiTools
+} from './features/commands/slash-command-tools';
+import {
+  bootstrapPlugins
 } from './plugins';
 
 /** 起点となるメインのアプリケーションクラス。 */
@@ -72,11 +73,11 @@ class App {
 const createClient = (): Client => {
   const intents = [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildScheduledEvents,
+    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildScheduledEvents
   ];
   const clientOptions = { intents, partials: [Partials.Message, Partials.Channel, Partials.Reaction] };
   return new Client(clientOptions);
@@ -85,7 +86,7 @@ const createClient = (): Client => {
 /** 起動に必要な依存関係を生成する。 */
 const createDependencies = (client: Client) => {
   const aiAgentService = new AiAgentService(
-    call => executeSlashCommandTool(call),
+    (call, context) => executeSlashCommandToolWithContext(call, context ?? {}),
     getSlashCommandAiTools()
   );
   const aiConversationService = new AiConversationService();
@@ -107,12 +108,10 @@ const runFeatureServices = (
 
 /** 依存を解決しつつアプリケーションを起動する。 */
 const bootstrap = () => {
-  registerPluginTools();
   const client = createClient();
-  registerPluginHandlers(client);
   const deps = createDependencies(client);
+  bootstrapPlugins(client);
   runFeatureServices(client, deps);
-  startPlugins(client);
   return new App(client);
 };
 

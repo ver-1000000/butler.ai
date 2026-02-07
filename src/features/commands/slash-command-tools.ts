@@ -16,8 +16,16 @@ export type SlashCommandToolDefinition = {
   arguments: SlashCommandToolArgument[];
 };
 
+export type SlashCommandToolContext = {
+  guildId?: string;
+  userId?: string;
+};
+
 /** スラッシュコマンドツールの実行関数。 */
-export type SlashCommandToolHandler = (args: Record<string, unknown>) => Promise<string>;
+export type SlashCommandToolHandler = (
+  args: Record<string, unknown>,
+  context?: SlashCommandToolContext
+) => Promise<string>;
 
 const TOOL_DEFINITIONS: SlashCommandToolDefinition[] = [];
 const TOOL_HANDLERS = new Map<string, SlashCommandToolHandler>();
@@ -110,4 +118,18 @@ export const executeSlashCommandTool = async (call: AiToolCall): Promise<string>
     return `未対応のコマンドです: ${call.name}`;
   }
   return handler(call.arguments);
+};
+
+/**
+ * AIからのツール呼び出しを実行する(実行コンテキスト付き)。
+ */
+export const executeSlashCommandToolWithContext = async (
+  call: AiToolCall,
+  context: SlashCommandToolContext
+): Promise<string> => {
+  const handler = TOOL_HANDLERS.get(call.name);
+  if (!handler) {
+    return `未対応のコマンドです: ${call.name}`;
+  }
+  return handler(call.arguments, context);
 };
