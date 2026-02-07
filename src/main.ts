@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import { ActivityType, Client, ClientUser, GatewayIntentBits, Partials, TextChannel } from 'discord.js';
 import { DISCORD_TOKEN, NOTIFY_TEXT_CHANNEL_ID } from './core/environment';
-import { NotifyVoiceChannelService } from './runtime/notify/notify-voice-channel.service';
 import { AiAgentService } from './runtime/ai/agent.service';
 import { AiConversationService } from './runtime/ai/conversation.service';
 import { InteractiveService } from './runtime/ai/interactive.service';
@@ -102,7 +101,6 @@ const bootstrap = () => {
     client: Client,
     deps: ReturnType<typeof createDependencies>,
   ) => {
-    new NotifyVoiceChannelService(client).run();
     new InteractiveService(
       client,
       deps.aiAgentService,

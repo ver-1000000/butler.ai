@@ -5,6 +5,7 @@ import {
 } from "../runtime/commands/slash-command-tools";
 import type { PluginManifest, PluginToolContext } from "./manifest.types";
 import eventReminder from "./event-reminder/manifest";
+import notifyVoiceChannel from "./notify-voice-channel/manifest";
 
 /**
  * プラグイン層のエントリポイント。
@@ -16,7 +17,7 @@ import eventReminder from "./event-reminder/manifest";
 /**
  * 起動対象のプラグイン一覧。
  */
-const plugins: PluginManifest[] = [eventReminder];
+const plugins: PluginManifest[] = [eventReminder, notifyVoiceChannel];
 
 /**
  * プラグイン基盤の初期化を一括で実行する公開API。
