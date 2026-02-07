@@ -4,6 +4,7 @@ import { NotifyVoiceChannelService } from './features/notify/notify-voice-channe
 import { AiAgentService } from './features/ai/agent.service';
 import { AiConversationService } from './features/ai/conversation.service';
 import { InteractiveService } from './features/ai/interactive.service';
+import { ButlerCommandService } from './features/commands/butler-command.service';
 import { registerSlashCommands } from './features/commands/slash-commands';
 import { executeSlashCommandTool, getSlashCommandAiTools } from './features/commands/slash-command-tools';
 import {
@@ -101,6 +102,7 @@ const runFeatureServices = (
 ) => {
   new NotifyVoiceChannelService(client).run();
   new InteractiveService(client, deps.aiAgentService, deps.aiConversationService).run();
+  new ButlerCommandService(client).run();
 };
 
 /** 依存を解決しつつアプリケーションを起動する。 */

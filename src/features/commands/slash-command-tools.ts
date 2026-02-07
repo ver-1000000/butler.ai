@@ -30,6 +30,27 @@ export const getSlashCommandTools = (): SlashCommandToolDefinition[] => {
 };
 
 /**
+ * 指定名のツール定義を取得する。
+ */
+export const getSlashCommandTool = (name: string): SlashCommandToolDefinition | undefined => {
+  return TOOL_DEFINITIONS.find(tool => tool.name === name);
+};
+
+/**
+ * ツール名をスラッシュコマンド用のサブコマンド名に変換する。
+ */
+export const toSlashSubcommandName = (toolName: string): string => {
+  return toolName.replace(/_/g, '-');
+};
+
+/**
+ * スラッシュコマンド用サブコマンド名をツール名に戻す。
+ */
+export const fromSlashSubcommandName = (subcommandName: string): string => {
+  return subcommandName.replace(/-/g, '_');
+};
+
+/**
  * スラッシュコマンドツールを登録する。
  */
 export const registerSlashCommandTool = (
