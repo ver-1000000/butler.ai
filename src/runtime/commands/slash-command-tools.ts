@@ -1,4 +1,5 @@
 import type { AiToolCall, AiToolDefinition } from '../../core/ai-provider';
+import { DEBUG_TOOL_CALLS } from '../../core/environment';
 
 /**
  * /butler と AI が共通利用する「ツールレジストリ」。
@@ -41,6 +42,17 @@ export type SlashCommandToolHandler = (
 const TOOL_DEFINITIONS: SlashCommandToolDefinition[] = [];
 const TOOL_HANDLERS = new Map<string, SlashCommandToolHandler>();
 const TOOL_AI_HINTS = new Map<string, string>();
+const isDebugToolCallsEnabled = DEBUG_TOOL_CALLS === '1' || DEBUG_TOOL_CALLS === 'true';
+
+const toDebugText = (value: unknown): string => {
+  try {
+    const text = JSON.stringify(value);
+    if (!text) return String(value);
+    return text.length > 500 ? `${text.slice(0, 500)}...` : text;
+  } catch {
+    return String(value);
+  }
+};
 
 /**
  * 現時点でAIに公開するスラッシュコマンドのツール一覧を返す。
@@ -115,9 +127,31 @@ export const executeSlashCommandTool = async (
   call: AiToolCall,
   context: SlashCommandToolContext = {}
 ): Promise<string> => {
+  if (isDebugToolCallsEnabled) {
+    console.log(
+      `[tool:request] name=${call.name} args=${toDebugText(call.arguments)} context=${toDebugText(context)}`
+    );
+  }
+
   const handler = TOOL_HANDLERS.get(call.name);
   if (!handler) {
+    if (isDebugToolCallsEnabled) {
+      console.warn(`[tool:missing] name=${call.name}`);
+    }
     return `未対応のコマンドです: ${call.name}`;
   }
-  return handler(call.arguments, context);
+
+  try {
+    const result = await handler(call.arguments, context);
+    if (isDebugToolCallsEnabled) {
+      console.log(`[tool:response] name=${call.name} result=${toDebugText(result)}`);
+    }
+    return result;
+  } catch (error) {
+    if (isDebugToolCallsEnabled) {
+      const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      console.error(`[tool:error] name=${call.name} error=${message}`);
+    }
+    throw error;
+  }
 };

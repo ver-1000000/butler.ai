@@ -7,18 +7,27 @@ const EVENT_REMINDER_TOOL_NAME = 'event-reminder';
 
 const normalizeDateTimeLikeInput = (value: string): string => {
   return value
+    .replace(/[　]/g, ' ')
     .trim()
-    .replace(/[年月]/g, '-')
-    .replace(/日/g, '')
-    .replace(/[時：]/g, ':')
-    .replace(/分/g, '')
+    .replace(/[０-９：]/g, (char) => {
+      if (char === '：') return ':';
+      return String.fromCharCode(char.charCodeAt(0) - 0xfee0);
+    })
     .replace(/\s+/g, ' ');
+};
+
+const normalizeEventName = (value: string): string => {
+  const trimmed = value.trim().replace(/[。！!？?]+$/g, '');
+  const stripped = trimmed.replace(/(?:の)?イベント(?:登録)?$/g, '').trim();
+  return stripped || trimmed;
 };
 
 const manifest: PluginManifest = {
   id: 'event-reminder',
   aiPolicy: [
     'event-reminderは不足情報を確認しすぎず、作成可能なら一度で作成する',
+    'ユーザー発話に「Xのイベント」がある場合、nameはXとして扱う(例: 「パーティのイベント登録」→ name=「パーティ」)',
+    '「明日19時」のような自然言語の日時はAIが具体日時へ変換してからstart/endへ渡す',
     'startの年が省略されている場合は今年として扱う',
     'endが未指定ならstartの2時間後を使う',
     'participantsが未指定なら対象なしとして扱う',
@@ -54,7 +63,7 @@ const manifest: PluginManifest = {
       const normalized: Record<string, unknown> = { ...args };
 
       if (typeof normalized.name === 'string') {
-        normalized.name = normalized.name.trim();
+        normalized.name = normalizeEventName(normalized.name);
       }
       if (typeof normalized.start === 'string') {
         normalized.start = normalizeDateTimeLikeInput(normalized.start);

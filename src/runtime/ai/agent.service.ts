@@ -72,17 +72,39 @@ export class AiAgentService {
    * AIの方針を明示するシステムメッセージを生成する。
    */
   private buildSystemMessage(): AiMessage {
+    const nowInTokyo = this.getCurrentDateTimeInTokyo();
     const content = `
       あなたはDiscord Botのbutlerです。
       利用できる機能はスラッシュコマンドのツールのみです。
       ツールは必要な場合のみ呼び出してください。
       通常の質問や雑談にはツールを使わず自然に返答してください。
-      ツールが必要か迷う場合は確認の質問をしてください。
+      現在日時(Asia/Tokyo): ${nowInTokyo}
+      ツール説明とAI方針(説明文中の「AI方針: ...」)を優先して実行してください。
+      確認質問は必要最小限にし、実行可能なら一度で実行してください。
+      補完した内容は実行結果で簡潔に報告してください。
       ツール未実行で結果を前提にしてはいけません。
-      不確かな場合は推測せず、わからないと伝えてください。
       ${(AI_PROMPT_APPEND ?? '').trim()}
     `.trim();
     return { role: 'system', content };
+  }
+
+  /** 現在日時をAsia/Tokyoのローカル時刻文字列で返す。 */
+  private getCurrentDateTimeInTokyo(): string {
+    const parts = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).formatToParts(new Date());
+
+    const get = (type: Intl.DateTimeFormatPartTypes): string =>
+      parts.find(part => part.type === type)?.value ?? '';
+
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
   }
 
   /**

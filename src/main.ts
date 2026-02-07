@@ -110,8 +110,8 @@ const bootstrap = () => {
   };
 
   const client = createClient();
-  const deps = createDependencies();
   bootstrapPlugins(client);
+  const deps = createDependencies();
   runRuntimeServices(client, deps);
   return new Main(client);
 };
