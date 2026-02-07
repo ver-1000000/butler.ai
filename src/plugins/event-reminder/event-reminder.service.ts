@@ -30,13 +30,6 @@ export class EventReminderService {
     return this;
   }
 
-  /** サービスを停止する。 */
-  stop(): void {
-    this.cronJob?.stop();
-    this.cronJob = null;
-    console.log('EventReminderService: 停止しました');
-  }
-
   /** 全ギルドのイベントをチェックしてリマインドを送信する。 */
   private async checkReminders(): Promise<void> {
     const guilds = this.client.guilds.cache;

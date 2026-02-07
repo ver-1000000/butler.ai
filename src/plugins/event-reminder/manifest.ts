@@ -1,24 +1,9 @@
 import type { Client } from 'discord.js';
 import type { PluginManifest } from '../manifest.types';
-import { createEventReminder } from './add-event.command';
+import { handleEventReminderTool } from './event-reminder.handler';
 import { EventReminderService } from './event-reminder.service';
 
 const EVENT_REMINDER_TOOL_NAME = 'event-reminder';
-
-const resolveGuildId = async (client: Client, guildId?: string): Promise<string | null> => {
-  if (guildId) return guildId;
-
-  if (client.guilds.cache.size > 0) {
-    return client.guilds.cache.first()?.id ?? null;
-  }
-
-  const guilds = await client.guilds.fetch().catch(() => null);
-  if (!guilds || guilds.size === 0) {
-    return null;
-  }
-
-  return guilds.first()?.id ?? null;
-};
 
 const manifest: PluginManifest = {
   id: 'event-reminder',
@@ -36,35 +21,7 @@ const manifest: PluginManifest = {
     }
   ],
   handlers: {
-    [EVENT_REMINDER_TOOL_NAME]: async (args, context) => {
-      const name = typeof args.name === 'string' ? args.name : '';
-      const start = typeof args.start === 'string' ? args.start : '';
-      const end = typeof args.end === 'string' ? args.end : null;
-      const description = typeof args.description === 'string' ? args.description : '';
-      const participants = typeof args.participants === 'string' ? args.participants : null;
-      const createdBy = context.userId ?? 'unknown';
-
-      const guildId = await resolveGuildId(context.client, context.guildId);
-      if (!guildId) {
-        return 'サーバー情報の取得に失敗しました。';
-      }
-
-      const guild = await context.client.guilds.fetch(guildId).catch(() => null);
-      if (!guild) {
-        return 'サーバー情報の取得に失敗しました。';
-      }
-
-      const result = await createEventReminder(guild, {
-        name,
-        start,
-        end,
-        description,
-        participants,
-        createdBy
-      });
-
-      return result.message;
-    }
+    [EVENT_REMINDER_TOOL_NAME]: handleEventReminderTool
   },
   start: (client: Client) => {
     new EventReminderService(client).run();

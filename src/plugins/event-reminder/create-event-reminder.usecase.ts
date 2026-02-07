@@ -1,10 +1,4 @@
-import {
-  ChatInputCommandInteraction,
-  Guild,
-  GuildScheduledEventEntityType,
-  GuildScheduledEventPrivacyLevel,
-  SlashCommandBuilder
-} from 'discord.js';
+import { Guild, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel } from 'discord.js';
 import {
   ReminderTiming,
   createDefaultBotMeta,
@@ -13,38 +7,6 @@ import {
 
 /** 有効なリマインドタイミング。 */
 const VALID_TIMINGS: ReminderTiming[] = ['7d', '3d', '1d', '0d'];
-
-/** /add-event スラッシュコマンド定義。 */
-export const ADD_EVENT_COMMAND = new SlashCommandBuilder()
-  .setName('add-event')
-  .setDescription('リマインド付きのスケジュールイベントを作成する')
-  .addStringOption((option) =>
-    option.setName('name').setDescription('イベント名').setRequired(true)
-  )
-  .addStringOption((option) =>
-    option
-      .setName('start')
-      .setDescription('開始日時 (例: 2024-12-25 19:00)')
-      .setRequired(true)
-  )
-  .addStringOption((option) =>
-    option
-      .setName('end')
-      .setDescription('終了日時 (例: 2024-12-25 21:00) 省略時は開始から2時間後')
-      .setRequired(false)
-  )
-  .addStringOption((option) =>
-    option
-      .setName('description')
-      .setDescription('イベントの説明')
-      .setRequired(false)
-  )
-  .addStringOption((option) =>
-    option
-      .setName('participants')
-      .setDescription('リマインド対象 (例: @user1 @user2) 最大10人')
-      .setRequired(false)
-  );
 
 /**
  * 日時文字列をDateオブジェクトにパースする。
@@ -196,34 +158,4 @@ export async function createEventReminder(
     console.error('イベント作成エラー:', error);
     return { ok: false, message: 'イベントの作成に失敗しました。' };
   }
-}
-
-/**
- * /add-event コマンドを処理する。
- */
-export async function handleAddEventCommand(
-  interaction: ChatInputCommandInteraction,
-): Promise<void> {
-  const guild = interaction.guild;
-  if (!guild) {
-    await interaction.reply({
-      content: "このコマンドはサーバー内でのみ使用できます。",
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const result = await createEventReminder(guild, {
-    name: interaction.options.getString('name', true),
-    start: interaction.options.getString('start', true),
-    end: interaction.options.getString('end'),
-    description: interaction.options.getString('description') || '',
-    participants: interaction.options.getString('participants'),
-    createdBy: interaction.user.id
-  });
-
-  await interaction.reply({
-    content: result.message,
-    ephemeral: !result.ok
-  });
 }
