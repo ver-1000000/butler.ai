@@ -4,8 +4,9 @@ import {
   registerSlashCommandToolHandler
 } from '../features/commands/slash-command-tools';
 import type { PluginManifest, PluginToolContext } from './plugin-types';
+import eventReminder from './event-reminder/plugin';
 
-const plugins: PluginManifest[] = [];
+const plugins: PluginManifest[] = [eventReminder];
 
 export const registerPluginTools = (): void => {
   for (const plugin of plugins) {
