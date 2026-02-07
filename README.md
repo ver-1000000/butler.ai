@@ -3,11 +3,23 @@ Node.jsサーバーで動作させることを前提とした、TypeScript実装
 
 GCP e2-micro / Oracle Always Free VMにデプロイすると無料枠で動かせてイイカンジです
 
-- https://github.com/ver-1000000/butler.git
+- https://github.com/ver-1000000/butler.ai
 
 ## 機能
 - メンションでAIに相談し、必要に応じてスラッシュコマンドを自律実行
+- `/butler` スラッシュコマンドのサブコマンド実行
+- イベントリマインダーの作成と定期通知
 - ボイスチャンネルが開始された際の通知
+
+## プラグイン
+このBotにおけるプラグインは、機能をモジュールとして追加するための単位です。
+各プラグインは `src/plugins/<plugin-name>/plugin.ts` でマニフェストを公開し、起動時に一括登録されます。
+
+プラグインの具体的な追加手順は `src/plugins/README.md` を参照してください。
+
+- ユーザー向けの入口は `/butler <subcommand>` に統一される
+- AI経由の実行でも同じツールハンドラを通る
+- 非コア機能を `src/plugins/` 配下に閉じ込めて差し替えしやすくする
 
 ## AI連携
 AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemini`。
@@ -16,8 +28,6 @@ AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemin
 - Workers AIは`AI_CLOUDFLARE_ACCOUNT_ID`が必要
 
 ## ファイル・ディレクトリ構成
-本プロジェクトは単一リポジトリ構成です。 `src/`配下に機能を集約しています。
-
 ```
 .
 ├── package.json
@@ -26,7 +36,7 @@ AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemin
 │   ├── assets/           # アセット(予定)
 │   ├── core/             # 環境変数/共通ロジック
 │   ├── features/         # Discordの機能実装
-│   ├── plugins/          # プラグイン(予定)
+│   ├── plugins/          # プラグイン実装とマニフェスト
 │   └── utils/            # 汎用ユーティリティ
 └── ... # 省略
 ```
@@ -38,15 +48,16 @@ AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemin
 4. 現状、必要な最低限のBot Permissionsは次の通り:
    - View Channels / Send Messages / Read Message History
    - Add Reactions / Manage Messages(リアクションの一括削除に必要)
-   - Connect / Speak / Mute Members(ポモドーロ用の音声参加/再生/ミュート制御に必要)
-   - Embed Links(引用やリンクの見栄えを整えるために必要)
+   - Manage Events(イベントリマインダーの作成/更新に必要)
+   - Connect / Speak / Mute Members(今後の音声機能を利用する場合に必要)
+   - Embed Links(リンクを整形して表示する場合に必要)
 5. 生成されたURLをコピーしてブラウザで開く
 6. 追加先のDiscordサーバーを選択して「認証」する
 7. 認証後、サーバー内にボットが参加していることを確認する
 8. 以降の起動手順に進む(環境変数の `DISCORD_TOKEN` が必要)
 
 ## 開発・デプロイ
-Dockerは利用しません。 Node.jsとnpmを前提にローカルで動かします。
+npmを前提にローカルで動かします。
 
 ### 運用/本番
 1. `.env.example`をコピーして`.env`を作成する
@@ -63,7 +74,7 @@ Dockerは利用しません。 Node.jsとnpmを前提にローカルで動かし
 
 ## 環境変数(.env)の説明
 - `DISCORD_TOKEN`: Discord APIを利用するために必要なトークン
-- `DISCORD_GUILD_ID`: スラッシュコマンドをギルド限定で登録する場合のギルドID(未設定の場合はグローバル登録)
+- `DISCORD_GUILD_ID`: `/butler` をギルド限定で登録する場合のギルドID(未設定の場合はグローバル登録)
 - `NOTIFY_TEXT_CHANNEL_ID`: 通知など、BOTが自発的に発言する際のテキストチャンネルID
 - `AI_PROVIDER`: 利用するAIプロバイダ(gemini / openai / claude / workersai)
 - `AI_MODEL`: 利用するモデル名

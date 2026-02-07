@@ -6,7 +6,7 @@
 - `src/features/` Discord Bot 本体の機能
 - `src/utils/` 汎用ユーティリティ
 - `src/assets/` アセット(予定)
-- `src/plugins/` プラグイン(予定)
+- `src/plugins/` プラグイン実装とマニフェスト
 
 ルート `tsconfig.json` は単一構成のビルド設定です。
 
@@ -18,7 +18,7 @@
 - `npm run clean` `dist/` と `*.tsbuildinfo` を削除
 
 ## Coding Style & Naming Conventions
-- ファイル命名は `*.service.ts` / `*.store.ts` / `*.model.ts` / `*.util.ts` / `*.command.ts`(kebab case)
+- ファイル命名は `*.service.ts` / `*.store.ts` / `*.model.ts` / `*.util.ts`(kebab case)
 - Discord コマンドのヘルプ文は実装と同じファイルに置く方針
 
 ## Testing Guidelines
@@ -27,7 +27,7 @@
 - Bot: Discord サーバーでコマンド動作を確認
 
 ## Commit & Pull Request Guidelines
-- Conventional Commits 形式 (例: `feat: add feature`)
+- Conventional Commits 形式 (例: `feat: 機能を追加`)
 - 破壊的変更は本文に `BREAKING CHANGE:` を追加
 - PR は概要、関連 Issue、UI 変更のスクリーンショット/GIF を記載
 - コミットは必ず日本語で行う
