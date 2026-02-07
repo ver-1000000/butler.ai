@@ -16,11 +16,46 @@ export type SlashCommandToolDefinition = {
   arguments: SlashCommandToolArgument[];
 };
 
+/** スラッシュコマンドツールの実行関数。 */
+export type SlashCommandToolHandler = (args: Record<string, unknown>) => Promise<string>;
+
+const TOOL_DEFINITIONS: SlashCommandToolDefinition[] = [];
+const TOOL_HANDLERS = new Map<string, SlashCommandToolHandler>();
+
 /**
  * 現時点でAIに公開するスラッシュコマンドのツール一覧を返す。
  */
 export const getSlashCommandTools = (): SlashCommandToolDefinition[] => {
-  return [];
+  return TOOL_DEFINITIONS;
+};
+
+/**
+ * スラッシュコマンドツールを登録する。
+ */
+export const registerSlashCommandTool = (
+  tool: SlashCommandToolDefinition,
+  handler?: SlashCommandToolHandler
+): void => {
+  const existingIndex = TOOL_DEFINITIONS.findIndex(item => item.name === tool.name);
+  if (existingIndex >= 0) {
+    TOOL_DEFINITIONS.splice(existingIndex, 1, tool);
+  } else {
+    TOOL_DEFINITIONS.push(tool);
+  }
+
+  if (handler) {
+    TOOL_HANDLERS.set(tool.name, handler);
+  }
+};
+
+/**
+ * 既存ツールの実行関数だけを登録する。
+ */
+export const registerSlashCommandToolHandler = (
+  name: string,
+  handler: SlashCommandToolHandler
+): void => {
+  TOOL_HANDLERS.set(name, handler);
 };
 
 /**
@@ -49,5 +84,9 @@ export const getSlashCommandAiTools = (): AiToolDefinition[] => {
  * @param call ツール呼び出し
  */
 export const executeSlashCommandTool = async (call: AiToolCall): Promise<string> => {
-  return `未対応のコマンドです: ${call.name}`;
+  const handler = TOOL_HANDLERS.get(call.name);
+  if (!handler) {
+    return `未対応のコマンドです: ${call.name}`;
+  }
+  return handler(call.arguments);
 };

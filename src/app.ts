@@ -6,7 +6,11 @@ import { AiConversationService } from './features/ai/conversation.service';
 import { InteractiveService } from './features/ai/interactive.service';
 import { registerSlashCommands } from './features/commands/slash-commands';
 import { executeSlashCommandTool, getSlashCommandAiTools } from './features/commands/slash-command-tools';
-import { EventReminderService } from './plugins/event-reminder/event-reminder.service';
+import {
+  registerPluginHandlers,
+  registerPluginTools,
+  startPlugins
+} from './plugins';
 
 /** 起点となるメインのアプリケーションクラス。 */
 class App {
@@ -97,14 +101,16 @@ const runFeatureServices = (
 ) => {
   new NotifyVoiceChannelService(client).run();
   new InteractiveService(client, deps.aiAgentService, deps.aiConversationService).run();
-  new EventReminderService(client).run();
 };
 
 /** 依存を解決しつつアプリケーションを起動する。 */
 const bootstrap = () => {
+  registerPluginTools();
   const client = createClient();
+  registerPluginHandlers(client);
   const deps = createDependencies(client);
   runFeatureServices(client, deps);
+  startPlugins(client);
   return new App(client);
 };
 
