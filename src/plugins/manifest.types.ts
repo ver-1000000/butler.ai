@@ -24,12 +24,6 @@ export type PluginToolHandler = (
   context: PluginToolContext
 ) => Promise<string>;
 
-/** ツール実行前に引数を補正する関数。 */
-export type PluginToolArgsNormalizer = (
-  args: Record<string, unknown>,
-  context: PluginToolContext
-) => Record<string, unknown> | Promise<Record<string, unknown>>;
-
 /**
  * プラグインをフレームワークへ登録するためのマニフェスト。
  * 利用箇所:
@@ -45,8 +39,6 @@ export type PluginManifest = {
   tools?: SlashCommandToolDefinition[];
   /** tools の name と対応付く実行ハンドラ群。 */
   handlers?: Record<string, PluginToolHandler>;
-  /** tools の name と対応付く引数補正関数。 */
-  normalizeToolArgs?: Record<string, PluginToolArgsNormalizer>;
   /** Bot起動時に一度だけ実行する初期化処理。cron起動などに利用する。 */
   start?: (client: Client) => void;
 };

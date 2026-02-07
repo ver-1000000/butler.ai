@@ -42,13 +42,9 @@ export const bootstrapPlugins = (client: Client): void => {
     for (const plugin of plugins) {
       const handlers = plugin.handlers ?? {};
       for (const [name, handler] of Object.entries(handlers)) {
-        registerSlashCommandToolHandler(name, async (args, context) => {
+        registerSlashCommandToolHandler(name, (args, context) => {
           const mergedContext: PluginToolContext = { client, ...context };
-          const normalizer = plugin.normalizeToolArgs?.[name];
-          const normalizedArgs = normalizer
-            ? await normalizer(args, mergedContext)
-            : args;
-          return handler(normalizedArgs, mergedContext);
+          return handler(args, mergedContext);
         });
       }
     }

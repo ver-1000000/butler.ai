@@ -42,9 +42,6 @@ src/plugins/
 - `aiPolicy`(任意)
   - AIがツールを呼び出す時の判断方針
   - AI向けツール説明へ自動で付加される
-- `normalizeToolArgs`(任意)
-  - ツール実行前に引数を補正する
-  - `tools[].name` と同名キーで定義する
 - `start`(任意)
   - cronや監視処理など、起動時に開始する処理を置く
 
