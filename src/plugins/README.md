@@ -76,6 +76,25 @@ const manifest: PluginManifest = {
 export default manifest;
 ```
 
+## 常駐型プラグインの例
+
+`/butler` や AI ツールを公開しない機能は、`start` のみ実装する
+
+```ts
+import type { Client } from 'discord.js';
+import type { PluginManifest } from '../manifest.types';
+import { NotifyVoiceChannelService } from './notify-voice-channel.service';
+
+const manifest: PluginManifest = {
+  id: 'notify-voice-channel',
+  start: (client: Client) => {
+    new NotifyVoiceChannelService(client).run();
+  }
+};
+
+export default manifest;
+```
+
 ## 登録手順
 
 `src/plugins/index.ts` の `plugins` 配列に追加する
