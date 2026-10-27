@@ -2,7 +2,7 @@
 
 Node.jsサーバーで動作させることを前提とした、TypeScript実装のDiscord Botです。 AI連携を前提とした設計になっています。
 
-GCP e2-micro / Oracle Always Free VMにデプロイすると無料枠で動かせてイイカンジです
+ローカル推論サーバーまたは外部AI APIを利用できます。
 
 - https://github.com/ver-1000000/butler.ai
 
@@ -28,8 +28,25 @@ GCP e2-micro / Oracle Always Free VMにデプロイすると無料枠で動か�
 
 AIプロバイダは環境変数で切り替えます。 例: `AI_PROVIDER=gemini`。
 
-- 対応プロバイダ: gemini / openai / claude / workersai
+- 対応プロバイダ: local / gemini / openai / claude / workersai
 - Workers AIは`AI_CLOUDFLARE_ACCOUNT_ID`が必要
+
+### ローカルモデル (NeoHorse)
+
+llama.cppなどのOpenAI互換Chat Completionsサーバーへ接続します。 ローカルモデルの利用にGemini等のAPIキーは不要で、外部AIへの自動フォールバックもありません。
+
+```dotenv
+AI_PROVIDER=local
+AI_BASE_URL=http://127.0.0.1:18089/v1
+AI_MODEL=neohorse
+AI_API_KEY=
+```
+
+`AI_BASE_URL`は`/v1`まで指定します。 認証付きサーバーのみ`AI_API_KEY`を設定してください。 推論APIは信頼できるネットワーク内に限定してください。
+
+検証モデルはNeoHorse-1-4B Q4_K_M、llama.cpp b11669です。 サーバーは`--alias neohorse --jinja --reasoning off --reasoning-budget 0`で起動し、リクエストは温度0.1・最大512トークン・プロンプトキャッシュ有効・思考なしに固定します。 モデルは事前に読み込み、常駐させます。 HTTP要求は180秒でタイムアウトします。
+
+日付解釈やツール実行判断に誤りが残るため、登録結果を確認してください。 会話・ツール実行は従来のプラグイン機構を利用します。
 
 ## ファイル・ディレクトリ構成
 
@@ -86,7 +103,8 @@ npmを前提にローカルで動かします。
 - `DISCORD_TOKEN`: Discord APIを利用するために必要なトークン
 - `DISCORD_GUILD_ID`: `/butler` をギルド限定で登録する場合のギルドID(未設定の場合はグローバル登録)
 - `NOTIFY_TEXT_CHANNEL_ID`: 通知など、BOTが自発的に発言する際のテキストチャンネルID
-- `AI_PROVIDER`: 利用するAIプロバイダ(gemini / openai / claude / workersai)
+- `AI_PROVIDER`: 利用するAIプロバイダ(local / gemini / openai / claude / workersai)
+- `AI_BASE_URL`: local利用時のOpenAI互換APIベースURL
 - `AI_MODEL`: 利用するモデル名
 - `AI_API_KEY`: AIプロバイダのAPIキー
 - `AI_CLOUDFLARE_ACCOUNT_ID`: Workers AI利用時のみ必要なAccount ID (オプション)

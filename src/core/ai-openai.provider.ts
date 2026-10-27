@@ -35,6 +35,7 @@ export class OpenAiProvider implements AiProvider {
   constructor(
     private readonly apiKey: string,
     private readonly model: string,
+    private readonly options: { baseUrl?: string; local?: boolean } = {},
   ) {}
 
   /**
@@ -42,7 +43,7 @@ export class OpenAiProvider implements AiProvider {
    * @param request 生成リクエスト
    */
   async generate(request: AiGenerateRequest): Promise<AiGenerateResponse> {
-    const url = "https://api.openai.com/v1/chat/completions";
+    const url = `${(this.options.baseUrl ?? "https://api.openai.com/v1").replace(/\/+$/, "")}/chat/completions`;
     const messages = request.messages
       .map((message, index) => this.toOpenAiMessage(message, index))
       .filter((message): message is OpenAiMessage => message !== null);
@@ -50,6 +51,14 @@ export class OpenAiProvider implements AiProvider {
     const tools = request.tools ? this.toOpenAiTools(request.tools) : undefined;
 
     const res = await this.requestWithRetry(url, {
+      ...(this.options.local
+        ? {
+            temperature: 0.1,
+            max_tokens: 512,
+            cache_prompt: true,
+            chat_template_kwargs: { enable_thinking: false },
+          }
+        : {}),
       model: this.model,
       messages,
       tools,
@@ -165,9 +174,10 @@ export class OpenAiProvider implements AiProvider {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${this.apiKey}`,
+            ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(180_000),
         });
 
         if (res.ok) {

@@ -4,6 +4,7 @@ import { OpenAiProvider } from "./ai-openai.provider";
 import { WorkersAiProvider } from "./ai-workersai.provider";
 import {
   AI_API_KEY,
+  AI_BASE_URL,
   AI_CLOUDFLARE_ACCOUNT_ID,
   AI_MODEL,
   AI_PROVIDER,
@@ -62,7 +63,12 @@ export interface AiProvider {
   generate(request: AiGenerateRequest): Promise<AiGenerateResponse>;
 }
 
-export type AiProviderName = "gemini" | "workersai" | "openai" | "claude";
+export type AiProviderName =
+  | "gemini"
+  | "workersai"
+  | "openai"
+  | "claude"
+  | "local";
 
 /**
  * 環境変数からAIプロバイダを構築する。
@@ -78,6 +84,28 @@ export const createAiProvider = (): AiProvider => {
     }
     const model = configuredModel ?? "gemini-2.5-flash";
     return new GeminiProvider(apiKey, model);
+  }
+
+  if (provider === "local") {
+    if (!AI_BASE_URL || !configuredModel) {
+      throw new Error("Local model requires AI_BASE_URL and AI_MODEL.");
+    }
+    const url = new URL(AI_BASE_URL);
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    ) {
+      throw new Error(
+        "AI_BASE_URL must be an HTTP(S) base URL without credentials, query or fragment.",
+      );
+    }
+    return new OpenAiProvider(apiKey, configuredModel, {
+      baseUrl: url.toString(),
+      local: true,
+    });
   }
 
   if (provider === "openai") {
